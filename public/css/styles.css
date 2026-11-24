@@ -299,3 +299,7 @@ summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
     .topic-card { padding: 15px; }
     .content-panel { margin-bottom: 14px; }
 }
+
+/* 8. Advertencia y soporte técnico */
+.medical-notice strong { color: var(--text); font-weight: 600; }
+.support-privacy { margin: 16px 0 0; color: var(--muted); font-size: 13px; }

@@ -10,6 +10,7 @@ const pages = [
     { path: '/favoritos', view: 'favoritos', label: 'Favoritos', icon: 'bookmark', group: 'secondary' },
     { path: '/configuracion', view: 'configuracion', label: 'Configuración', icon: 'settings', group: 'utility' },
     { path: '/ayuda', view: 'ayuda', label: 'Ayuda', icon: 'help', group: 'utility' },
+    { path: '/soporte', view: 'soporte', label: 'Soporte técnico', icon: 'headset', group: 'utility' },
     { path: '/educacion', view: 'educacion', label: 'Educación en salud', icon: 'book', parent: '/bienestar' },
     { path: '/orientacion', view: 'orientacion', label: 'Orientación general', icon: 'clipboard' }
 ];

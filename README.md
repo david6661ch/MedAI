@@ -65,6 +65,7 @@ El modelo contiene metadatos de navegación, no una base de datos. El controlado
 | `/favoritos` | Favoritos vacíos |
 | `/configuracion` | Configuración ilustrativa |
 | `/ayuda` | Ayuda y preguntas frecuentes |
+| `/soporte` | Soporte técnico (formulario ilustrativo) |
 | `/educacion` | Educación en salud |
 | `/orientacion` | Orientación general |
 
@@ -80,6 +81,7 @@ Las dos últimas se abren mediante tarjetas de inicio y enlaces contextuales. La
 ## Alcance y pruebas
 
 - Los botones y campos de las funciones médicas son ilustrativos. El cuadro de chat permite escribir localmente, pero no envía información. No introduzcas datos sensibles.
+- El aviso de IA se reutiliza en todas las vistas. El soporte técnico está disponible desde el menú y Ayuda; su formulario no envía datos y no existe aún un canal de contacto real.
 - Las preguntas frecuentes se expanden mediante HTML nativo (`details`). Los enlaces internos funcionan.
 - `npm test` comprueba las rutas, recursos, página 404, archivos no públicos y métodos HTTP.
 - No es un servicio médico, ni está preparado para un despliegue en producción. No se han realizado auditorías de seguridad o accesibilidad completas.

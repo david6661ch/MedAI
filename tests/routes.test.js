@@ -9,7 +9,7 @@ before(async () => {
 });
 after(() => new Promise(resolve => server.close(resolve)));
 
-const paths = ['/', '/sintomas', '/bienestar', '/medicamentos', '/prevencion', '/habitos', '/historial', '/favoritos', '/configuracion', '/ayuda', '/educacion', '/orientacion'];
+const paths = ['/', '/sintomas', '/bienestar', '/medicamentos', '/prevencion', '/habitos', '/historial', '/favoritos', '/configuracion', '/ayuda', '/soporte', '/educacion', '/orientacion'];
 for (const path of paths) {
     test(`GET ${path}`, async () => {
         const response = await fetch(base + path);
@@ -19,7 +19,9 @@ for (const path of paths) {
         assert.match(html, /<h1[ >]/);
         assert.match(html, /<\/html>/);
         assert.doesNotMatch(html, /\{\{\w+\}\}/);
+        assert.match(html, /Soy una IA, puedo cometer errores/);
         assert.match(html, /No sustituye el diagnóstico/);
+        assert.match(html, /href="\/soporte"/);
         if (!['/educacion', '/orientacion'].includes(path)) {
             assert.match(html, /aria-current="page"/);
         }
@@ -40,4 +42,16 @@ test('404 y archivos privados', async () => {
 test('POST no permitido y HEAD sin cuerpo', async () => {
     assert.equal((await fetch(base + '/', { method: 'POST' })).status, 405);
     assert.equal(await (await fetch(base + '/', { method: 'HEAD' })).text(), '');
+});
+
+test('Aviso compartido y acceso a soporte técnico', async () => {
+    const chat = await (await fetch(base + '/')).text();
+    assert.equal((chat.match(/id="aviso-medico"/g) || []).length, 1);
+    assert.match(chat, /aria-describedby="aviso-medico"/);
+    const help = await (await fetch(base + '/ayuda')).text();
+    assert.match(help, /href="\/soporte">Contactar con soporte técnico/);
+    const support = await (await fetch(base + '/soporte')).text();
+    assert.match(support, /<h1>Soporte técnico<\/h1>/);
+    assert.match(support, /<fieldset disabled>/);
+    assert.match(support, /Enviar solicitud · Próximamente/);
 });
