@@ -1,6 +1,6 @@
 # MedAI — aplicación interactiva (MVC)
 
-Asistente de orientación general de salud en español. Node.js 20.6+ para cargar .env (recomendado Node.js 22+). No es un servicio clínico ni un sistema de diagnóstico.
+Asistente de orientación general de salud en español. Node.js 20.12+ para cargar .env (recomendado Node.js 22+). No es un servicio clínico ni un sistema de diagnóstico.
 
 ## Ejecutar
 ```bash
@@ -18,7 +18,7 @@ Abre http://127.0.0.1:3000. Sin credenciales funcionan las herramientas locales 
 
 ## APIs
 Copia .env.example a .env, completa los proveedores reales y ejecuta npm run start:api. En Windows PowerShell: Copy-Item .env.example .env. El servidor no expone claves al navegador.
-- MEDAI_PROVIDER_CONFIG: JSON con operaciones chat, revise, transcribe y support. Cada operación contiene una lista de proveedores con url, noTraining:true, tokenEnv opcional y, si kind es openai, model. El adaptador de chat queda reservado y no se llama en esta fase. El adaptador openai usa Chat Completions y Audio Transcriptions compatibles. El adaptador genérico requiere el contrato indicado abajo. No se incluye ningún proveedor ni credencial por defecto.
+- MEDAI_PROVIDER_CONFIG: JSON con operaciones chat, revise, transcribe y support. Cada operación contiene una lista de proveedores con url, noTraining:true, tokenEnv opcional y, si kind es openai, model. El adaptador de chat queda reservado y no se llama en esta fase. El adaptador openai usa Chat Completions y Audio Transcriptions compatibles. El adaptador genérico requiere el contrato indicado abajo. Incluye un preset de Whisper deshabilitado por defecto. No se incluye ninguna credencial.
 - Los proveedores alternativos se prueban solo si se configuraron explícitamente (máximo dos), y pueden recibir los datos del usuario. Soporte no reintenta automáticamente para evitar duplicados.
 - POST /api/chat: {message} -> {text, rule, sources, sourceNotice, disclosure, generatedBy, policyVersion} (reglas locales); POST /api/revise: {text} -> {text}; POST /api/transcribe: bytes de audio, MIME de audio -> {text}; POST /api/support: {email,reason,message} -> {accepted:true}; GET /api/status: capacidades configuradas. Las solicitudes POST exigen X-MedAI-Consent con JSON {version,operation,accepted:true}. Los proveedores genéricos de chat/revisión también reciben instructions.
 - El backend está pensado para desarrollo local, con límite de tamaño, tiempo y frecuencia. Antes de exponerlo públicamente, implementa autenticación, autorización, cuotas, protección antiabuso, consentimiento informado y revisión clínica/de privacidad. CORS no sustituye autenticación. No uses datos reales en las pruebas.
@@ -44,3 +44,6 @@ Referencias de diseño: [Ley 1581 de 2012](https://www.funcionpublica.gov.co/eva
 
 ## Probar audio con Groq
 Con el proveedor Whisper aprobado en `.env`, ejecuta `npm run start:api`, abre `http://127.0.0.1:3000/` y comprueba `/api/status` (transcribe:true). El botón de micrófono y Grabar audio usan MediaRecorder y `/api/transcribe`. Dictado local es una opción separada. Pulsa una vez para grabar, habla unos segundos y pulsa otra vez; autoriza el envío del audio ficticio y revisa la transcripción. GitHub Pages necesita un backend HTTPS externo para la API. Un error del proveedor se comunica mediante códigos controlados, sin exponer credenciales ni cuerpos de error. No sobrescribas tu .env existente.
+
+## Configuración simplificada de Groq (Whisper)
+Requiere Node.js 20.12+ (22 recomendado). Conserva tu `.env` con `GROQ_API_KEY`. Ejecuta `npm run setup:groq`: verifica la clave y disponibilidad del modelo sin enviar audio, y solicita confirmar la revisión de privacidad antes de guardar las dos aprobaciones locales. El preset selecciona Whisper Large V3 sin JSON manual; configuraciones explícitas conservan prioridad. `npm start` y `npm run start:api` cargan `.env` automáticamente si existe. No se imprime ni sube la clave. No se habilitan automáticamente modelos conversacionales ni backend remoto. Prueba solo audio ficticio.

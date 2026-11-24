@@ -1,4 +1,5 @@
 import { Buffer } from 'node:buffer';
+import { getProviders } from '../services/providerConfig.js';
 import { redactPersonalData, localGuidance, safeRevision, validConsent, POLICY_VERSION } from '../public/js/ethics.js';
 
 const limits = { chat: 64*1024, revise: 64*1024, support: 32*1024, transcribe: 10*1024*1024 };
@@ -10,14 +11,7 @@ function json(res, code, data) {
     res.writeHead(code, {'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});
     res.end(JSON.stringify(data));
 }
-function configured(operation) {
-    try {
-        const parsed = JSON.parse(process.env.MEDAI_PROVIDER_CONFIG || '{}');
-        // Bloqueado por defecto: el responsable debe verificar las condiciones del proveedor.
-        if(process.env.MEDAI_PROVIDER_POLICY_REVIEWED !== 'true') return [];
-        return Array.isArray(parsed[operation]) ? parsed[operation].filter(p=>p && typeof p.url==='string' && p.noTraining===true && (!p.tokenEnv || !!process.env[p.tokenEnv]?.trim()) && (operation!=='transcribe'||p.rawAudioApproved===true)) : [];
-    } catch { return []; }
-}
+const configured = getProviders;
 function allowedOrigin(req) {
     const origin = req.headers.origin;
     if (!origin) return true;

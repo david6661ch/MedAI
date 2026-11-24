@@ -1,4 +1,6 @@
 import { createServer } from 'node:http';
+import { loadEnvFile } from 'node:process';
+import { getProviders } from './services/providerConfig.js';
 import { spawn } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { route } from './routes/pageRoutes.js';
@@ -36,10 +38,18 @@ function openBrowser(url) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+    try { loadEnvFile(new URL('./.env', import.meta.url)); }
+    catch (error) {
+        if (error.code !== 'ENOENT') {
+            console.error('No se pudo leer .env. Revisa el formato del archivo.');
+            process.exit(1);
+        }
+    }
     const port = Number(process.env.PORT || 3000);
     server.listen(port, '127.0.0.1', () => {
         const url = `http://127.0.0.1:${server.address().port}/`;
         console.log(`MedAI disponible en ${url}`);
+        console.log(getProviders('transcribe').length ? 'Transcripción: configurada (conexión real aún sin probar).' : 'Transcripción: no habilitada. Ejecuta npm run setup:groq.');
         if (process.argv.includes('--open')) openBrowser(url);
     });
 }
