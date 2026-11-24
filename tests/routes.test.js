@@ -77,7 +77,7 @@ test('Campo de consulta adaptable y recurso JavaScript', async () => {
 });
 
 test('Recursos interactivos y API sin configuración', async () => {
-    for (const path of ['/js/app.js','/js/api-config.js']) assert.equal((await fetch(base+path)).status,200);
+    for (const path of ['/js/app.js','/js/audio.js','/js/api-config.js']) assert.equal((await fetch(base+path)).status,200);
     assert.match(await (await fetch(base+'/')).text(), /src="\/js\/app\.js"/);
     assert.equal((await fetch(base+'/api/status')).status,200);
     assert.equal((await fetch(base+'/api/chat',{method:'POST',headers:{'Content-Type':'application/json','Origin':'https://untrusted.example'},body:JSON.stringify({message:'prueba'})})).status,403);

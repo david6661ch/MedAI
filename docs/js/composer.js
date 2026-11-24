@@ -1,7 +1,7 @@
 // Ajuste automático para navegadores sin soporte nativo de field-sizing.
 const input = document.getElementById('consulta');
 
-if (input && !CSS.supports('field-sizing', 'content')) {
+if (input && !window.CSS?.supports?.('field-sizing', 'content')) {
     function resizeInput() {
         // Restablecer primero permite que el campo se reduzca al borrar texto.
         input.style.height = 'auto';

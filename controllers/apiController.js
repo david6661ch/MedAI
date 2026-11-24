@@ -1,11 +1,11 @@
 import { Buffer } from 'node:buffer';
+import { audioMime, audioExtension, sniffAudio } from '../public/js/audio.js';
 import { getProviders } from '../services/providerConfig.js';
 import { redactPersonalData, localGuidance, safeRevision, validConsent, POLICY_VERSION } from '../public/js/ethics.js';
 
 const limits = { chat: 64*1024, revise: 64*1024, support: 32*1024, transcribe: 10*1024*1024 };
 const safety = 'Eres MedAI, un asistente de información general de salud, no un profesional médico. Responde en español, con claridad y sin inventar datos o fuentes. Expresa incertidumbre y di "No tengo esa información" si no tienes evidencia suficiente. No diagnostiques ni indiques dosis individualizadas o cambios de tratamiento. Ante signos de emergencia indica buscar atención urgente. Distingue información general de valoración profesional.';
 const editing = 'Corrige ortografía, puntuación y legibilidad en español. Devuelve únicamente el texto corregido. Conserva todos los hechos, incertidumbres, nombres, síntomas, fechas, números, unidades, dosis y negaciones. No añadas ni suprimas información médica ni respondas a la consulta. Si hay duda, conserva el texto original.';
-const audioTypes = new Set(['audio/webm','video/webm','audio/ogg','application/ogg','audio/wav','audio/x-wav','audio/mpeg','audio/mp3','audio/mp4','video/mp4','audio/x-m4a','audio/aac','audio/flac','application/octet-stream']);
 const recent = new Map();
 function json(res, code, data) {
     res.writeHead(code, {'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});
@@ -31,7 +31,7 @@ async function body(req, limit) {
 }
 function validate(operation, raw, mime) {
     if(operation==='transcribe'){
-        if(!audioTypes.has(mime)||!raw.length)throw Error('audio');
+        if(!audioExtension(mime)||!raw.length)throw Error('audio');
         return raw;
     }
     if(mime!=='application/json')throw Error('json');
@@ -59,7 +59,7 @@ async function upstream(operation, provider, payload, mime) {
         data=JSON.stringify({model:provider.model,messages:[{role:'system',content:operation==='chat'?safety:editing},{role:'user',content:operation==='chat'?payload.message:payload.text}]});
     }else if(provider.kind==='openai'&&operation==='transcribe'){
         if(!provider.model)throw Error('missing model');
-        const ext={'audio/mpeg':'mp3','audio/mp3':'mp3','audio/wav':'wav','audio/x-wav':'wav','audio/mp4':'m4a','video/mp4':'mp4','audio/x-m4a':'m4a','audio/ogg':'ogg','application/ogg':'ogg','audio/flac':'flac'}[mime]||'webm';
+        const ext=audioExtension(mime);if(!ext)throw Error('Formato no reconocido');
         data=new FormData(); data.append('file',new Blob([payload],{type:mime}),'audio.'+ext);data.append('model',provider.model);data.append('language','es');data.append('response_format',provider.model.startsWith('whisper-')?'verbose_json':'json');data.append('temperature','0');
     }else if(operation==='transcribe'){
         headers['Content-Type']=mime;data=payload;
@@ -114,7 +114,9 @@ export async function handleApi(req,res,path){
     let payload,mime;
     try {
         mime=(req.headers['content-type']||'').split(';')[0].toLowerCase();
-        payload=validate(operation,await body(req,limits[operation]),mime);
+        const raw=await body(req,limits[operation]);
+        if(operation==='transcribe')mime=audioMime(mime)||((!mime||mime==='application/octet-stream')?sniffAudio(raw):'');
+        payload=validate(operation,raw,mime);
     }catch(e){return json(res,e.status||400,{error:'Invalid or oversized input'});}
     // Control humano y fuentes: no enviar consultas clínicas a un modelo generativo en esta etapa.
     if(operation==='chat')return json(res,200,localGuidance(payload.message));

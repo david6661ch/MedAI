@@ -1,5 +1,5 @@
 import { API_BASE } from './api-config.js';
-import { prepareAudio } from './audio.js';
+import { prepareAudio, audioMime, audioExtension, sniffAudio, recorderFormats, fetchWithTimeout } from './audio.js';
 import { redactPersonalData, localGuidance, safeRevision, POLICY_VERSION, sourceNotice, DISCLOSURE } from './ethics.js';
 
 const $ = id => document.getElementById(id);
@@ -58,10 +58,10 @@ function apiBase() {
 async function api(operation, payload, type = 'application/json') {
     const base = apiBase();
     if (!base) throw Error('No hay un servidor API configurado.');
-    const response = await fetch(base + '/api/' + operation, {
+    const response = await fetchWithTimeout(base + '/api/' + operation, {
         method: 'POST', headers: { 'Content-Type': type, 'X-MedAI-Consent': JSON.stringify({version:POLICY_VERSION,operation,accepted:true}) },
         body: type === 'application/json' ? JSON.stringify(payload) : payload,
-        signal: AbortSignal.timeout(90000), cache: 'no-store'
+        cache: 'no-store'
     });
     if (!response.ok) {
         const detail = await response.json().catch(()=>({}));
@@ -156,7 +156,7 @@ function reviseUI() {
     const content = main.querySelector('.main-content');
     content?.append(chatLog);
     const audioPreview=node('section',undefined,'content-panel');audioPreview.hidden=true;
-    const player=node('audio');player.controls=true;player.preload='metadata';player.style.width='100%';
+    const player=node('audio',undefined,'audio-player');player.controls=true;player.preload='metadata';player.setAttribute('playsinline','');
     const audioDetail=node('p','','muted-copy');
     let pendingAudio=null,previewUrl='',previewVersion=0;
     function clearAudio(){previewVersion++;player.pause();player.removeAttribute('src');player.load();if(previewUrl)URL.revokeObjectURL(previewUrl);previewUrl='';pendingAudio=null;audioPreview.hidden=true;}
@@ -181,7 +181,8 @@ function reviseUI() {
         show(weak?'La grabación está casi en silencio. Comprueba el micrófono y vuelve a grabar.':short?'Grabación demasiado corta. Habla unos segundos y vuelve a grabar.':'Escucha la grabación. Si contiene tu frase completa, pulsa Transcribir audio. Aún no se envió nada.');
         audioPreview.scrollIntoView({block:'nearest'});
     }
-    const audioFile = node('input'); audioFile.type='file'; audioFile.accept='audio/*,.webm,.m4a,.mp3,.wav,.ogg,.txt,text/plain'; audioFile.hidden=true;
+    const audioFile = node('input'); audioFile.type='file'; audioFile.accept='audio/*,.webm,.mp4,.m4a,.mp3,.mpeg,.mpga,.wav,.ogg,.oga,.opus,.flac,.aac,.txt,text/plain'; audioFile.hidden=true;
+    const nativeFile=node('input');nativeFile.type='file';nativeFile.accept='audio/*';nativeFile.setAttribute('capture','user');nativeFile.hidden=true;
     async function transcribe(blob) {
         if (busy || recording || starting || recognition || leaving) return show('Termina primero la operación de audio.');
         if (blob.size === 0 || blob.size > 10*1024*1024) return show('El audio debe tener entre 1 byte y 10 MB.');
@@ -190,7 +191,8 @@ function reviseUI() {
             if (!await checkTranscription() || leaving) return;
             if (!confirm('El audio original puede contener tu voz y datos de salud. No puede anonimizarse completamente antes de transcribirlo. Solo un proveedor autorizado para audio y sin entrenamiento/evaluación podrá procesarlo. ¿Autorizas este envío específico?')) return;
             show('Transcribiendo audio con el proveedor configurado…');
-            const mime = (blob.type || 'application/octet-stream').split(';')[0];
+            const mime = audioMime(blob.type)||sniffAudio(new Uint8Array(await blob.slice(0,64).arrayBuffer()));
+            if(!mime||!audioExtension(mime))throw Error('Formato de audio no reconocido o no admitido sin conversión. Usa WAV, MP3, M4A, MP4, OGG o WebM.');
             const r = await api('transcribe',blob,mime);
             if (typeof r.text !== 'string' || !r.text.trim()) throw Error('No se recibió una transcripción utilizable.');
             if(leaving)return;
@@ -199,18 +201,22 @@ function reviseUI() {
         } catch(e) { show(e.message + ' Puedes volver a intentar o escribir la consulta.'); }
         finally { busy=false; send.disabled=false; mic.disabled=false; attach.disabled=false; record.disabled=false; localDictation.disabled=false; sendAudio.disabled=false; }
     }
-    audioFile.addEventListener('change',async () => {
-        const file=audioFile.files[0]; audioFile.value='';
+    async function selectedFile(event){
+        const picker=event.currentTarget,file=picker.files[0];picker.value='';
         if(!file) return;
         if(file.type==='text/plain'||file.name.toLowerCase().endsWith('.txt')){
             if(file.size>100000) return show('El archivo de texto supera 100 KB.');
             transcript(await file.text());
-        } else await previewAudio(file);
-    });
+        } else {
+            if(!file.size||file.size>10*1024*1024)return show('El audio está vacío o supera 10 MB.');
+            try{const mime=audioMime(file.type,file.name)||sniffAudio(new Uint8Array(await file.slice(0,64).arrayBuffer()));if(!mime)return show('Formato no reconocido. Usa WAV, MP3, M4A, MP4, OGG, FLAC o WebM.');await previewAudio(new Blob([file],{type:mime}));}catch{show('No se pudo leer el archivo.');}
+        }
+    }
+    audioFile.addEventListener('change',selectedFile);nativeFile.addEventListener('change',selectedFile);
     attach.disabled=false; attach.setAttribute('aria-label','Adjuntar audio o archivo de texto');
     attach.title='Adjuntar audio o texto';
     attach.addEventListener('click',()=>audioFile.click());
-    tools.append(audioFile,button('Revisar redacción',()=>{if(input.value.trim())transcript(input.value);else show('Escribe un texto primero.');},'small-action'));
+    tools.append(audioFile,nativeFile,button('Grabar con dispositivo',()=>{if(!busy&&!recording&&!starting&&!recognition)nativeFile.click();},'small-action'),button('Revisar redacción',()=>{if(input.value.trim())transcript(input.value);else show('Escribe un texto primero.');},'small-action'));
     const deviceSelect=node('select',undefined,'form-select');deviceSelect.setAttribute('aria-label','Micrófono de entrada');
     const defaultDevice=node('option','Micrófono predeterminado');defaultDevice.value='';deviceSelect.append(defaultDevice);
     async function refreshDevices(){
@@ -245,8 +251,8 @@ function reviseUI() {
     async function checkTranscription(){
         try{
             const base=apiBase();
-            if(!base){show('GitHub Pages no tiene backend de audio conectado. Abre http://127.0.0.1:3000/ con npm run start:api.');return false;}
-            const response=await fetch(base+'/api/status',{cache:'no-store',signal:AbortSignal.timeout(8000)});
+            if(!base){show('La transcripción externa todavía no está conectada en GitHub Pages. Puedes escuchar la grabación localmente o escribir tu consulta.');return false;}
+            const response=await fetchWithTimeout(base+'/api/status',{cache:'no-store'},8000);
             if(!response.ok)throw Error('No se pudo consultar el estado del servidor.');
             const config=await response.json();
             if(!config.transcribe){show('Transcripción deshabilitada. Revisa .env, la clave y las autorizaciones de privacidad; reinicia con npm run start:api.');return false;}
@@ -264,24 +270,24 @@ function reviseUI() {
     async function toggleRecording(){
         if(recording){if(recorder?.state==='recording')recorder.stop();return;}
         if(busy||recognition||starting||leaving)return show('Termina primero la operación en curso.');
-        if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder)return show('La grabación requiere un navegador compatible y HTTPS o localhost.');
+        if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder){show('Grabación directa no disponible. Usa la grabadora del dispositivo o adjunta un audio.');nativeFile.click();return;}
         starting=true;record.disabled=true;mic.disabled=true;send.disabled=true;attach.disabled=true;localDictation.disabled=true;
         try{
-            if(!await checkTranscription()){resetRecording();return;}
             if(!confirm('¿Permitir grabación local? Podrás decidir después si envías el audio a transcripción.')){resetRecording();return;}
-            stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true,...(deviceSelect.value?{deviceId:{exact:deviceSelect.value}}:{})}});
+            try{stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:{ideal:true},noiseSuppression:{ideal:true},autoGainControl:{ideal:true},...(deviceSelect.value?{deviceId:{exact:deviceSelect.value}}:{})}});}catch(e){if(!['OverconstrainedError','TypeError'].includes(e.name))throw e;deviceSelect.value='';stream=await navigator.mediaDevices.getUserMedia({audio:true});}
             refreshDevices();
             if(leaving){resetRecording();return;}
-            const formats=['audio/webm;codecs=opus','audio/webm','audio/mp4','audio/ogg;codecs=opus'];
-            const mimeType=formats.find(type=>MediaRecorder.isTypeSupported(type));
             const chunks=[];let size=0,failed=false;const startedAt=performance.now();
-            const capture=new MediaRecorder(stream,mimeType?{mimeType}:undefined);
+            let capture;
+            for(const mimeType of recorderFormats(window.MediaRecorder)){try{capture=new MediaRecorder(stream,mimeType?{mimeType}:undefined);break;}catch{}}
+            if(!capture)throw Error('Formato de grabación no compatible');
             recorder=capture;
             capture.ondataavailable=e=>{if(!e.data.size)return;size+=e.data.size;if(size<=10*1024*1024)chunks.push(e.data);if((size>10*1024*1024||performance.now()-startedAt>=300000)&&capture.state==='recording')capture.stop();};
             capture.onerror=()=>{failed=true;resetRecording();show('Error al grabar el audio.');};
             capture.onstop=async()=>{
                 if(failed||leaving){resetRecording();return;}
-                const blob=new Blob(chunks,{type:capture.mimeType||chunks[0]?.type||'audio/webm'});
+                let blob=new Blob(chunks,{type:capture.mimeType||chunks[0]?.type||''});
+                if(blob.size&&!audioMime(blob.type)){const mime=sniffAudio(new Uint8Array(await blob.slice(0,64).arrayBuffer()));if(mime)blob=new Blob([blob],{type:mime});}
                 resetRecording();
                 if(size>10*1024*1024)return show('Grabación demasiado larga (máximo 10 MB).');
                 if(!blob.size)return show('No se capturó audio. Comprueba el permiso y el micrófono.');
@@ -289,8 +295,8 @@ function reviseUI() {
             };
             capture.start(250);starting=false;recording=true;record.disabled=false;mic.disabled=false;
             record.textContent='Detener grabación';mic.classList.add('recording');mic.setAttribute('aria-pressed','true');
-            show('Grabando audio… habla y pulsa el micrófono otra vez para terminar.');
-        }catch(e){resetRecording();show(e.name==='NotAllowedError'?'Permiso de micrófono denegado. Revisa los permisos del navegador.':e.name==='NotFoundError'?'No se encontró un micrófono.':'No se pudo grabar: '+e.name);}
+            show('Grabando audio… habla y pulsa el micrófono otra vez para terminar. Mantén esta página abierta.');
+        }catch(e){resetRecording();show(e.name==='NotAllowedError'?'Permiso de micrófono denegado. Revisa los permisos del navegador.':e.name==='NotFoundError'?'No se encontró un micrófono.':'No se pudo grabar directamente. Usa Grabar con dispositivo o adjunta un archivo.');}
     }
     const record=button('Grabar audio',toggleRecording,'small-action');
     mic.setAttribute('aria-pressed','false');mic.addEventListener('click',toggleRecording);
@@ -298,7 +304,8 @@ function reviseUI() {
     const chatStatus=node('p','','app-status');chatStatus.setAttribute('role','status');
     // Mantener el estado de voz y errores junto a la barra persistente.
     composer.prepend(status);
-    composer.querySelector('.composer').after(tools,info,chatStatus);
+    const options=node('details',undefined,'chat-options');options.append(node('summary','Opciones de audio y privacidad'),tools,info);
+    composer.querySelector('.composer').after(options,chatStatus);
     content?.append(review);
     function bubble(role,text,metadata){
         const item=node('article',undefined,'assistant-message '+(role==='Tú'?'user-message':''));
@@ -333,6 +340,7 @@ function reviseUI() {
     try{const draft=sessionStorage.getItem('medai:draft');if(draft){sessionStorage.removeItem('medai:draft');transcript(draft);}}catch{}
     window.addEventListener('pagehide',()=>{leaving=true;clearAudio();recognition?.abort();if(recorder?.state==='recording')recorder.stop();stream?.getTracks().forEach(t=>t.stop());});
     window.addEventListener('pageshow',()=>{leaving=false;});
+    document.addEventListener('visibilitychange',()=>{if(document.hidden&&recording&&recorder?.state==='recording')recorder.stop();});
 }
 function activate(id, handler, text) {
     const el=$(id); if(!el)return;
