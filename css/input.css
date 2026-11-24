@@ -1,0 +1,7 @@
+/* Tailwind v4: utilidades con prefijo tw y sin Preflight para evitar
+   sobrescribir el reset y la cuadrícula de Bootstrap. */
+@theme prefix(tw) {
+    --spacing: 0.25rem;
+}
+@source "../index.html";
+@tailwind utilities;

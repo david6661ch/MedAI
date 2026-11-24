@@ -1,0 +1,28 @@
+/*! tailwindcss v4.1.10 | MIT License | https://tailwindcss.com */
+:root, :host {
+  --tw-spacing: 0.25rem;
+}
+.tw\:relative {
+  position: relative;
+}
+.tw\:flex {
+  display: flex;
+}
+.tw\:w-full {
+  width: 100%;
+}
+.tw\:flex-col {
+  flex-direction: column;
+}
+.tw\:items-center {
+  align-items: center;
+}
+.tw\:justify-center {
+  justify-content: center;
+}
+.tw\:gap-3 {
+  gap: calc(var(--tw-spacing) * 3);
+}
+.tw\:text-center {
+  text-align: center;
+}
