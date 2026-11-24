@@ -1,6 +1,7 @@
 import { createServer } from 'node:http';
 import { loadEnvFile } from 'node:process';
 import { getProviders } from './services/providerConfig.js';
+import { publicMode, accessConfigured } from './services/publicAccess.js';
 import { spawn } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { route } from './routes/pageRoutes.js';
@@ -9,7 +10,7 @@ export const server = createServer(async (request, response) => {
     try {
         await route(request, response);
     } catch (error) {
-        console.error(error.message);
+        console.error('Error interno al procesar la solicitud.');
         if (!response.headersSent) response.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
         response.end('No se pudo cargar la página.');
     }
@@ -46,10 +47,14 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
         }
     }
     const port = Number(process.env.PORT || 3000);
-    server.listen(port, '127.0.0.1', () => {
+    const isPublic=publicMode();
+    if(isPublic&&!accessConfigured()){console.error('Falta un código de acceso privado de al menos 32 caracteres.');process.exit(1);}
+    server.requestTimeout=30000;
+    server.headersTimeout=15000;
+    server.listen(port, isPublic?'0.0.0.0':'127.0.0.1', () => {
         const url = `http://127.0.0.1:${server.address().port}/`;
         console.log(`MedAI disponible en ${url}`);
         console.log(getProviders('transcribe').length ? 'Transcripción: configurada (conexión real aún sin probar).' : 'Transcripción: no habilitada. Ejecuta npm run setup:groq.');
-        if (process.argv.includes('--open')) openBrowser(url);
+        if (!isPublic && process.argv.includes('--open')) openBrowser(url);
     });
 }

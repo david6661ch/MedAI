@@ -13,6 +13,8 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      MEDAI_PUBLIC_API_BASE: ${{ vars.MEDAI_PUBLIC_API_BASE }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

@@ -441,3 +441,8 @@ summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
 @media (pointer: coarse) {
     .icon-button, .small-action, .action-button { min-height: 44px; }
 }
+
+/* Acceso a la demostración pública, sin almacenar credenciales en el navegador. */
+.demo-access { color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px; width: min(420px, 92vw); }
+.demo-access::backdrop { background: rgba(0,0,0,.65); }
+.demo-access form { display: grid; gap: 12px; }

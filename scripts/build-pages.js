@@ -31,6 +31,14 @@ for (const asset of assets) {
     await copyFile(new URL('../public/' + asset, import.meta.url), target);
 }
 
+// Solo la URL pública del backend; nunca secretos ni claves.
+const apiBase=process.env.MEDAI_PUBLIC_API_BASE?.trim();
+if(apiBase){
+    const url=new URL(apiBase);
+    if(url.protocol!=='https:'||url.username||url.password||url.pathname!=='/'||url.search||url.hash)throw Error('MEDAI_PUBLIC_API_BASE debe ser un origen HTTPS sin ruta ni credenciales.');
+    await writeFile(new URL('js/api-config.js',destination),'// Origen público generado por GitHub Actions.\nexport const API_BASE = '+JSON.stringify(url.origin)+';\n','utf8');
+}
+
 for (const page of [...pages, notFoundPage]) {
     const prefix = page.view === '404' ? '/MedAI/' : './';
     const html = renderPage(page, navigation).replace(/(href|src)="(\/[^"]*)"/g, (_, attribute, path) => {

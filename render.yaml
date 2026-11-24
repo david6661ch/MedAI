@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: medai-api
+    runtime: node
+    plan: free
+    branch: main
+    buildCommand: npm run build:pages && npm test
+    startCommand: npm run start:server
+    healthCheckPath: /api/status
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: MEDAI_PUBLIC_BACKEND
+        value: "true"
+      - key: MEDAI_ALLOWED_ORIGINS
+        value: https://david6661ch.github.io
+      - key: MEDAI_DEMO_ACCESS_CODE
+        generateValue: true
+      - key: GROQ_API_KEY
+        sync: false
+      - key: MEDAI_PROVIDER_POLICY_REVIEWED
+        sync: false
+      - key: MEDAI_GROQ_AUDIO_APPROVED
+        sync: false

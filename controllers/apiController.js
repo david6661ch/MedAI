@@ -1,4 +1,5 @@
 import { Buffer } from 'node:buffer';
+import { publicMode, accessConfigured, validAccess, reserveDemoRequest } from '../services/publicAccess.js';
 import { audioMime, audioExtension, sniffAudio } from '../public/js/audio.js';
 import { getProviders } from '../services/providerConfig.js';
 import { redactPersonalData, localGuidance, safeRevision, validConsent, POLICY_VERSION } from '../public/js/ethics.js';
@@ -15,6 +16,7 @@ const configured = getProviders;
 function allowedOrigin(req) {
     const origin = req.headers.origin;
     if (!origin) return true;
+    if(publicMode())return (process.env.MEDAI_ALLOWED_ORIGINS||'').split(',').map(s=>s.trim()).includes(origin);
     const same = ['http://127.0.0.1','http://localhost','http://[::1]'].some(host => {
         try { const u=new URL(origin);return u.origin===origin&&u.protocol+'//'+u.hostname===host; } catch{return false;}
     });
@@ -95,10 +97,12 @@ export async function handleApi(req,res,path){
     const operation=path.slice('/api/'.length);
     if(!allowedOrigin(req)){return json(res,403,{error:'Origin not allowed'});}
     if(req.headers.origin){res.setHeader('Access-Control-Allow-Origin',req.headers.origin);res.setHeader('Vary','Origin');}
-    if(req.method==='OPTIONS'){res.writeHead(204,{'Access-Control-Allow-Methods':'GET, POST, OPTIONS','Access-Control-Allow-Headers':'Content-Type, X-MedAI-Consent','Access-Control-Max-Age':'600'});res.end();return;}
-    if(operation==='status'&&req.method==='GET')return json(res,200,{chat:true,chatMode:'rules',policyVersion:POLICY_VERSION,revise:!!configured('revise').length,transcribe:!!configured('transcribe').length,support:!!configured('support').length});
+    if(req.method==='OPTIONS'){res.writeHead(204,{'Access-Control-Allow-Methods':'GET, POST, OPTIONS','Access-Control-Allow-Headers':'Content-Type, X-MedAI-Consent, Authorization','Access-Control-Max-Age':'600'});res.end();return;}
+    if(operation==='status'&&req.method==='GET')return json(res,200,{chat:true,chatMode:'rules',policyVersion:POLICY_VERSION,accessRequired:publicMode(),revise:!!configured('revise').length,transcribe:!!configured('transcribe').length,support:!!configured('support').length});
     if(!Object.hasOwn(limits,operation))return json(res,404,{error:'Not found'});
     if(req.method!=='POST')return json(res,405,{error:'Method not allowed'});
+    if(publicMode()&&!accessConfigured())return json(res,503,{error:'Demo not configured'});
+    if(!validAccess(req.headers.authorization))return json(res,401,{error:'Demo access required',code:'DEMO_ACCESS'});
     let consent;
     try { consent=JSON.parse(req.headers['x-medai-consent']||'null'); } catch {}
     if(!validConsent(consent,operation))return json(res,403,{error:'Explicit current consent required'});
@@ -111,6 +115,9 @@ export async function handleApi(req,res,path){
     const record=recent.get(key)||{start:now,count:0};
     if(++record.count>15)return json(res,429,{error:'Rate limit'});
     recent.set(key,record);
+    const release=publicMode()?reserveDemoRequest():()=>{};
+    if(!release)return json(res,429,{error:'Demo limit reached',code:'DEMO_LIMIT'});
+    try{
     let payload,mime;
     try {
         mime=(req.headers['content-type']||'').split(';')[0].toLowerCase();
@@ -129,4 +136,5 @@ export async function handleApi(req,res,path){
     }
     // Solo códigos controlados: nunca cuerpos de error, claves ni audio.
     return json(res,502,{error:'Provider unavailable',code});
+    }finally{release();}
 }

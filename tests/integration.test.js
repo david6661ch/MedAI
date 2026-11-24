@@ -21,7 +21,10 @@ test('Exportación estática: páginas, enlaces y recursos', async () => {
     for(const path of ['js/app.js','js/audio.js','js/api-config.js','js/composer.js','js/ethics.js','css/styles.css']){
         const a=await readFile(new URL('../public/'+path,import.meta.url));
         const b=await readFile(new URL(path,root));
-        assert.deepEqual(a,b);
+        if(path==='js/api-config.js'&&process.env.MEDAI_PUBLIC_API_BASE?.trim()){
+            const expected=new URL(process.env.MEDAI_PUBLIC_API_BASE.trim()).origin;
+            assert.ok(b.toString().includes('export const API_BASE = '+JSON.stringify(expected)+';'));
+        }else assert.deepEqual(a,b);
     }
 });
 

@@ -46,24 +46,41 @@ function applyTheme() {
     document.documentElement.dataset.bsTheme = light ? 'light' : 'dark';
 }
 applyTheme();
+let demoCode='';
 function apiBase() {
+    if (['localhost','127.0.0.1','[::1]'].includes(location.hostname) && !location.pathname.endsWith('.html')) return location.origin;
     if (API_BASE) {
         const url = new URL(API_BASE);
         if (url.protocol !== 'https:') throw Error('El servidor remoto debe usar HTTPS.');
         return url.href.replace(/\/$/, '');
     }
-    if (['localhost','127.0.0.1','[::1]'].includes(location.hostname) && !location.pathname.endsWith('.html')) return location.origin;
     return '';
+}
+async function requestDemoCode(){
+    if(demoCode)return demoCode;
+    const dialog=node('dialog',undefined,'demo-access');
+    if(typeof dialog.showModal!=='function')throw Error('Actualiza el navegador para ingresar el código de acceso.');
+    const label=node('label','Código de acceso a la demo (no es la API key de Groq)');
+    const field=node('input',undefined,'form-control');field.type='password';field.autocomplete='off';field.required=true;field.id='demo-code';label.htmlFor=field.id;
+    const form=node('form');form.method='dialog';
+    const submit=node('button','Continuar','action-button');submit.type='submit';submit.value='ok';
+    const cancel=button('Cancelar',()=>dialog.close('cancel'));
+    form.append(label,field,submit,cancel);dialog.append(form);document.body.append(dialog);
+    return new Promise(resolve=>{dialog.addEventListener('close',()=>{const value=dialog.returnValue==='ok'?field.value.trim():'';field.value='';dialog.remove();demoCode=value;resolve(value);},{once:true});dialog.showModal();field.focus();});
 }
 async function api(operation, payload, type = 'application/json') {
     const base = apiBase();
     if (!base) throw Error('No hay un servidor API configurado.');
+    const remote=base!==location.origin;
+    if(remote&&!await requestDemoCode())throw Error('Envío cancelado.');
     const response = await fetchWithTimeout(base + '/api/' + operation, {
-        method: 'POST', headers: { 'Content-Type': type, 'X-MedAI-Consent': JSON.stringify({version:POLICY_VERSION,operation,accepted:true}) },
+        method: 'POST', headers: { 'Content-Type': type, 'X-MedAI-Consent': JSON.stringify({version:POLICY_VERSION,operation,accepted:true}), ...(remote?{Authorization:'Bearer '+demoCode}:{}) },
         body: type === 'application/json' ? JSON.stringify(payload) : payload,
         cache: 'no-store'
     });
     if (!response.ok) {
+        if(response.status===401){demoCode='';throw Error('Código de acceso incorrecto. Vuelve a intentarlo.');}
+        if(response.status===429)throw Error('Límite temporal de solicitudes de la demo. Intenta más tarde.');
         const detail = await response.json().catch(()=>({}));
         const messages = { PROVIDER_KEY:'La clave del proveedor no está configurada o fue rechazada.', PROVIDER_QUOTA:'El proveedor alcanzó su límite de uso. Intenta más tarde.', PROVIDER_AUDIO:'El proveedor rechazó el formato o contenido del audio.', PROVIDER_SILENCE:'Whisper detectó probable silencio. Escucha el audio y prueba otro micrófono.', PROVIDER_EMPTY:'El proveedor no devolvió texto. Habla claramente y prueba una grabación más larga.', PROVIDER_TIMEOUT:'El proveedor tardó demasiado en responder.', PROVIDER_UNAVAILABLE:'No se pudo contactar con el proveedor.', PROVIDER_FORBIDDEN:'El proveedor denegó el acceso al modelo.' };
         if(messages[detail.code]) throw Error(messages[detail.code]);
@@ -252,7 +269,7 @@ function reviseUI() {
         try{
             const base=apiBase();
             if(!base){show('La transcripción externa todavía no está conectada en GitHub Pages. Puedes escuchar la grabación localmente o escribir tu consulta.');return false;}
-            const response=await fetchWithTimeout(base+'/api/status',{cache:'no-store'},8000);
+            const response=await fetchWithTimeout(base+'/api/status',{cache:'no-store'},90000);
             if(!response.ok)throw Error('No se pudo consultar el estado del servidor.');
             const config=await response.json();
             if(!config.transcribe){show('Transcripción deshabilitada. Revisa .env, la clave y las autorizaciones de privacidad; reinicia con npm run start:api.');return false;}
