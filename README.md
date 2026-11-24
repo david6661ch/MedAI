@@ -93,3 +93,7 @@ La carpeta `docs/` contiene una exportación estática completa de las vistas MV
 En Settings → Pages, selecciona **Deploy from a branch**, rama **main**, carpeta **/docs**, y guarda. La URL se habilita cuando GitHub termina el despliegue.
 
 Cuando modifiques las vistas, ejecuta `npm run build:pages` y sube los cambios de `docs/` junto con los archivos fuente. Si cambias las utilidades Tailwind, recompila antes con `npm run build:css`. La versión local MVC sigue funcionando con `npm start`.
+
+### Respuesta de respaldo (futura IA)
+
+El mensaje se define en `models/chatModel.js` y se prepara en la plantilla HTML inerte `respuesta-sin-informacion` de `views/chat.html`. Cuando se integre la IA, deberá usarse si no cuenta con información suficiente o fiable, sin inventar respuestas. Por ahora no se muestra ni se activa automáticamente. En una emergencia se debe priorizar la orientación para buscar ayuda urgente.

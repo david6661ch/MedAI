@@ -51,6 +51,7 @@
             </div>
 
             <section class="composer-area" aria-label="Escribir una consulta">
+                {{notice}}
                 <div class="composer tw:flex tw:items-center tw:gap-3">
                     <button type="button" class="icon-button attach-button" aria-label="Adjuntar archivos (próximamente)" disabled>
                         <svg class="icon" aria-hidden="true" focusable="false"><use href="#plus"></use></svg>
@@ -64,5 +65,7 @@
                         <svg class="icon" aria-hidden="true" focusable="false"><use href="#send"></use></svg>
                     </button>
                 </div>
-                {{notice}}
             </section>
+
+            <!-- Plantilla reservada para una futura respuesta de la IA. -->
+            <template id="respuesta-sin-informacion"><article class="assistant-message" aria-label="Respuesta de MedAI"><p>{{unavailableMessage}}</p></article></template>

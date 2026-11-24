@@ -303,3 +303,35 @@ summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
 /* 8. Advertencia y soporte técnico */
 .medical-notice strong { color: var(--text); font-weight: 600; }
 .support-privacy { margin: 16px 0 0; color: var(--muted); font-size: 13px; }
+
+/* 9. Aviso médico destacado y futura respuesta del asistente */
+.medical-notice {
+    justify-content: flex-start;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 16px;
+    border: 1px solid #a88b50;
+    border-left: 4px solid #e1b766;
+    border-radius: 10px;
+    background: #2b261d;
+    color: #f2e2c1;
+    font-size: 14px;
+    line-height: 1.5;
+    text-align: left;
+}
+.medical-notice strong {
+    display: block;
+    color: #ffda93;
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+.medical-notice-description { display: block; }
+.medical-notice .icon { width: 23px; height: 23px; color: #ffda93; margin-top: 1px; }
+.composer-area > .medical-notice { margin: 0 0 14px; }
+.assistant-message { padding: 16px 18px; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 12px; }
+.assistant-message p { margin: 0; }
+@media (max-width: 575.98px) {
+    .medical-notice { padding: 12px; gap: 9px; font-size: 13px; }
+    .medical-notice strong { font-size: 15px; }
+}

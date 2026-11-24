@@ -175,6 +175,7 @@
             </div>
 
             <section class="composer-area" aria-label="Escribir una consulta">
+                <p class="medical-notice" id="aviso-medico"><svg class="icon" aria-hidden="true" focusable="false"><use href="#info"></use></svg><span><strong>Soy una IA, puedo cometer errores.</strong><span class="medical-notice-description">Verifica la información antes de tomar decisiones sobre tu salud. No sustituye el diagnóstico ni la atención de un profesional médico. Ante una emergencia, acude a los servicios de urgencias.</span></span></p>
                 <div class="composer tw:flex tw:items-center tw:gap-3">
                     <button type="button" class="icon-button attach-button" aria-label="Adjuntar archivos (próximamente)" disabled>
                         <svg class="icon" aria-hidden="true" focusable="false"><use href="#plus"></use></svg>
@@ -188,10 +189,11 @@
                         <svg class="icon" aria-hidden="true" focusable="false"><use href="#send"></use></svg>
                     </button>
                 </div>
-                <p class="medical-notice" id="aviso-medico"><svg class="icon" aria-hidden="true" focusable="false"><use href="#info"></use></svg><span><strong>Soy una IA, puedo cometer errores.</strong> Verifica la información antes de tomar decisiones sobre tu salud. No sustituye el diagnóstico ni la atención de un profesional médico.</span></p>
-
+                
             </section>
 
+            <!-- Plantilla reservada para una futura respuesta de la IA. -->
+            <template id="respuesta-sin-informacion"><article class="assistant-message" aria-label="Respuesta de MedAI"><p>No tengo esa información. No dispongo de datos suficientes o fiables para responder con seguridad. Puedes reformular tu pregunta o consultar a un profesional de la salud.</p></article></template>
         </main>
     </div>
 </body>

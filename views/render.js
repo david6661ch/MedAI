@@ -1,5 +1,6 @@
 // Vista: motor mínimo para reutilizar plantillas HTML locales.
 import { readFileSync } from 'node:fs';
+import { unavailableMessage } from '../models/chatModel.js';
 
 function readTemplate(name) {
     return readFileSync(new URL(`./${name}.html`, import.meta.url), 'utf8');
@@ -35,6 +36,6 @@ export function renderPage(page, navigation) {
         mainClass: page.view === 'chat' ? '' : 'inner-panel',
         icons: readTemplate('partials/icons'),
         sidebar: fill(readTemplate('partials/sidebar'), groups),
-        content: fill(readTemplate(page.view), { notice: readTemplate('partials/notice') })
+        content: fill(readTemplate(page.view), { notice: readTemplate('partials/notice'), unavailableMessage: escapeHtml(unavailableMessage) })
     });
 }

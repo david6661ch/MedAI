@@ -55,3 +55,11 @@ test('Aviso compartido y acceso a soporte técnico', async () => {
     assert.match(support, /<fieldset disabled>/);
     assert.match(support, /Enviar solicitud · Próximamente/);
 });
+
+test('Advertencia destacada y respuesta futura de respaldo', async () => {
+    const chat = await (await fetch(base + '/')).text();
+    assert.ok(chat.indexOf('id="aviso-medico"') < chat.indexOf('id="consulta"'));
+    assert.match(chat, /class="medical-notice-description"/);
+    assert.match(chat, /<template id="respuesta-sin-informacion">/);
+    assert.match(chat, /No tengo esa información/);
+});
