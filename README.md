@@ -10,7 +10,7 @@ Requisito: Node.js 20 o superior. Abre la carpeta MedAI-MVC en VS Code, abre la 
 npm start
 ```
 
-Abre http://127.0.0.1:3000 en tu navegador. No se requiere `npm install` para iniciar porque el servidor usa módulos nativos y las hojas de estilos ya están incluidas. No utilices Live Server ni abras las plantillas directamente: el servidor MVC debe componerlas.
+El servidor abrirá automáticamente la pantalla inicial de MedAI en tu navegador predeterminado al estar listo. Si el sistema no permite abrirlo, entra manualmente en http://127.0.0.1:3000. Para iniciar sin abrir el navegador, utiliza `npm run start:server`. No se requiere `npm install` para iniciar porque el servidor usa módulos nativos y las hojas de estilos ya están incluidas. No utilices Live Server ni abras las plantillas directamente: el servidor MVC debe componerlas.
 
 Para reiniciar automáticamente al cambiar archivos JavaScript:
 
