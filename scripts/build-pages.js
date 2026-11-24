@@ -11,7 +11,9 @@ const assets = [
     'css/vendor/bootstrap.min.css',
     'css/vendor/TAILWIND-LICENSE.txt',
     'img/logo.svg',
-    'js/composer.js'
+    'js/composer.js',
+    'js/app.js',
+    'js/api-config.js'
 ];
 const navigation = {
     primary: getNavigation('primary'),

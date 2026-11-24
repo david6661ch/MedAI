@@ -10,7 +10,8 @@
         "build:css": "tailwindcss -i ./public/css/input.css -o ./public/css/output.css",
         "watch:css": "tailwindcss -i ./public/css/input.css -o ./public/css/output.css --watch",
         "start:server": "node server.js",
-        "build:pages": "node scripts/build-pages.js"
+        "build:pages": "node scripts/build-pages.js",
+        "start:api": "node --env-file=.env server.js --open"
     },
     "devDependencies": {
         "@tailwindcss/cli": "4.1.10",

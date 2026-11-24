@@ -373,3 +373,36 @@ summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
     .composer-area > .medical-notice { margin-bottom: 8px; }
     .message-input { font-size: 16px; min-height: 44px; }
 }
+
+/* 11. Interacción, accesibilidad y preferencias */
+.app-status { color: var(--accent); font-size: 14px; overflow-wrap: anywhere; margin: 8px 0; }
+.app-status:empty { display: none; }
+.chat-tools { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 7px; }
+.small-action { font: inherit; font-size: 13px; border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 7px; padding: 7px 10px; margin: 5px 5px 0 0; }
+.small-action:hover { background: var(--surface-hover); }
+.small-action:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.chat-log { display: grid; gap: 12px; margin-top: 20px; }
+.assistant-message p, .saved-row p { white-space: pre-wrap; overflow-wrap: anywhere; margin: 8px 0; }
+.user-message { background: var(--surface-hover); }
+.transcript-review { margin-top: 16px; }
+.transcript-review label { display: block; margin: 12px 0 5px; }
+.transcript-review textarea { resize: vertical; }
+.composer-area > .muted-copy { font-size: 12px; margin-top: 5px; }
+.saved-items { display: grid; gap: 10px; margin-top: 18px; }
+.saved-row { border: 1px solid var(--border); border-radius: 10px; padding: 12px; background: var(--surface); overflow-wrap: anywhere; }
+.saved-row input { margin-right: 10px; }
+.recording { outline: 2px solid #e78484; }
+.topic-card .text-link { margin-right: 8px; }
+[data-medai-theme="light"] { --background:#f1f5f8; --sidebar:#fff; --surface:#fff; --surface-hover:#e4eff5; --border:#9bafbd; --text:#152b3c; --muted:#405665; --accent:#145b85; --accent-dark:#17678f; }
+[data-medai-theme="light"] .main-panel { background: var(--background); }
+[data-medai-theme="light"] .content-panel, [data-medai-theme="light"] .quick-card, [data-medai-theme="light"] .page-icon { background: var(--surface); }
+[data-medai-theme="light"] .quick-card .icon, [data-medai-theme="light"] .nav-item .icon { color: var(--accent); }
+[data-medai-theme="light"] .nav-item.active { background: #dcecf4; }
+[data-medai-theme="light"] .message-input::placeholder { color: var(--muted); }
+[data-medai-theme="light"] .icon-button:not(.send-button), [data-medai-theme="light"] .action-link, [data-medai-theme="light"] .action-button { background: var(--surface-hover); color: var(--text); }
+[data-medai-theme="light"] .field .form-control, [data-medai-theme="light"] .field .form-select { background: var(--surface); color: var(--text); }
+[data-medai-theme="light"] .field .form-control::placeholder { color: var(--muted); }
+[data-medai-theme="light"] .demo-label { background: var(--surface-hover); }
+[data-medai-theme="light"] .medical-notice, [data-medai-theme="light"] .safety-note { background: #fff4db; color: #563a14; border-color: #9c7839; }
+[data-medai-theme="light"] .medical-notice strong, [data-medai-theme="light"] .medical-notice .icon { color: #65420e; }
+@media(max-width:575.98px) { .composer-area > .muted-copy { font-size:11px; } .chat-tools { gap:4px; } }

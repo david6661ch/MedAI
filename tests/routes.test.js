@@ -52,7 +52,7 @@ test('Aviso compartido y acceso a soporte técnico', async () => {
     assert.match(help, /href="\/soporte">Contactar con soporte técnico/);
     const support = await (await fetch(base + '/soporte')).text();
     assert.match(support, /<h1>Soporte técnico<\/h1>/);
-    assert.match(support, /<fieldset disabled>/);
+    assert.match(support, /<fieldset disabled>/); // JavaScript habilita el formulario con validación.
     assert.match(support, /Enviar solicitud · Próximamente/);
 });
 
@@ -74,4 +74,11 @@ test('Campo de consulta adaptable y recurso JavaScript', async () => {
     assert.equal(script.status, 200);
     assert.match(script.headers.get('content-type'), /text\/javascript/);
     assert.match(await script.text(), /scrollHeight/);
+});
+
+test('Recursos interactivos y API sin configuración', async () => {
+    for (const path of ['/js/app.js','/js/api-config.js']) assert.equal((await fetch(base+path)).status,200);
+    assert.match(await (await fetch(base+'/')).text(), /src="\/js\/app\.js"/);
+    assert.equal((await fetch(base+'/api/status')).status,200);
+    assert.equal((await fetch(base+'/api/chat',{method:'POST',headers:{'Content-Type':'application/json','Origin':'https://untrusted.example'},body:JSON.stringify({message:'prueba'})})).status,403);
 });
