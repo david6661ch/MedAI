@@ -1,4 +1,5 @@
 import { Buffer } from 'node:buffer';
+import { redactPersonalData, localGuidance, safeRevision, validConsent, POLICY_VERSION } from '../public/js/ethics.js';
 
 const limits = { chat: 64*1024, revise: 64*1024, support: 32*1024, transcribe: 10*1024*1024 };
 const safety = 'Eres MedAI, un asistente de información general de salud, no un profesional médico. Responde en español, con claridad y sin inventar datos o fuentes. Expresa incertidumbre y di "No tengo esa información" si no tienes evidencia suficiente. No diagnostiques ni indiques dosis individualizadas o cambios de tratamiento. Ante signos de emergencia indica buscar atención urgente. Distingue información general de valoración profesional.';
@@ -12,7 +13,9 @@ function json(res, code, data) {
 function configured(operation) {
     try {
         const parsed = JSON.parse(process.env.MEDAI_PROVIDER_CONFIG || '{}');
-        return Array.isArray(parsed[operation]) ? parsed[operation].filter(p=>p && typeof p.url==='string') : [];
+        // Bloqueado por defecto: el responsable debe verificar las condiciones del proveedor.
+        if(process.env.MEDAI_PROVIDER_POLICY_REVIEWED !== 'true') return [];
+        return Array.isArray(parsed[operation]) ? parsed[operation].filter(p=>p && typeof p.url==='string' && p.noTraining===true && (operation!=='transcribe'||p.rawAudioApproved===true)) : [];
     } catch { return []; }
 }
 function allowedOrigin(req) {
@@ -40,9 +43,9 @@ function validate(operation, raw, mime) {
     if(mime!=='application/json')throw Error('json');
     const data=JSON.parse(raw.toString('utf8'));
     const str=(v,max)=>typeof v==='string'&&v.trim().length>0&&v.length<=max;
-    if(operation==='chat'&&str(data.message,12000))return {message:data.message};
-    if(operation==='revise'&&str(data.text,20000))return {text:data.text};
-    if(operation==='support'&&str(data.email,254)&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)&&str(data.reason,100)&&str(data.message,5000))return {email:data.email,reason:data.reason,message:data.message};
+    if(operation==='chat'&&str(data.message,12000))return {message:redactPersonalData(data.message)};
+    if(operation==='revise'&&str(data.text,20000))return {text:redactPersonalData(data.text)};
+    if(operation==='support'&&str(data.email,254)&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)&&str(data.reason,100)&&str(data.message,5000))return {email:data.email,reason:redactPersonalData(data.reason),message:redactPersonalData(data.message)};
     throw Error('invalid');
 }
 async function upstream(operation, provider, payload, mime) {
@@ -78,18 +81,23 @@ async function upstream(operation, provider, payload, mime) {
     if(operation==='support'){if(result.accepted!==true)throw Error('not confirmed');return {accepted:true};}
     const text=provider.kind==='openai'&&operation!=='transcribe'?result.choices?.[0]?.message?.content:result.text;
     if(typeof text!=='string'||!text.trim()||text.length>40000)throw Error('invalid response');
-    return {text};
+    const redacted=redactPersonalData(text);
+    if(operation==='revise' && !safeRevision(payload.text,redacted))throw Error('unsafe revision');
+    return {text:redacted,generatedBy:'ai',policyVersion:POLICY_VERSION};
 }
 export async function handleApi(req,res,path){
     const operation=path.slice('/api/'.length);
     if(!allowedOrigin(req)){return json(res,403,{error:'Origin not allowed'});}
     if(req.headers.origin){res.setHeader('Access-Control-Allow-Origin',req.headers.origin);res.setHeader('Vary','Origin');}
-    if(req.method==='OPTIONS'){res.writeHead(204,{'Access-Control-Allow-Methods':'GET, POST, OPTIONS','Access-Control-Allow-Headers':'Content-Type','Access-Control-Max-Age':'600'});res.end();return;}
-    if(operation==='status'&&req.method==='GET')return json(res,200,{chat:!!configured('chat').length,revise:!!configured('revise').length,transcribe:!!configured('transcribe').length,support:!!configured('support').length});
+    if(req.method==='OPTIONS'){res.writeHead(204,{'Access-Control-Allow-Methods':'GET, POST, OPTIONS','Access-Control-Allow-Headers':'Content-Type, X-MedAI-Consent','Access-Control-Max-Age':'600'});res.end();return;}
+    if(operation==='status'&&req.method==='GET')return json(res,200,{chat:true,chatMode:'rules',policyVersion:POLICY_VERSION,revise:!!configured('revise').length,transcribe:!!configured('transcribe').length,support:!!configured('support').length});
     if(!Object.hasOwn(limits,operation))return json(res,404,{error:'Not found'});
     if(req.method!=='POST')return json(res,405,{error:'Method not allowed'});
+    let consent;
+    try { consent=JSON.parse(req.headers['x-medai-consent']||'null'); } catch {}
+    if(!validConsent(consent,operation))return json(res,403,{error:'Explicit current consent required'});
     const providers=configured(operation);
-    if(!providers.length)return json(res,503,{error:'Provider not configured'});
+    if(operation!=='chat'&&!providers.length)return json(res,503,{error:'Provider not configured or policy not approved'});
     // Límite básico para desarrollo. Un despliegue público requiere autenticación,
     // controles de abuso y privacidad adicionales en un proxy de confianza.
     const key=req.socket.remoteAddress||'unknown',now=Date.now();
@@ -102,6 +110,8 @@ export async function handleApi(req,res,path){
         mime=(req.headers['content-type']||'').split(';')[0].toLowerCase();
         payload=validate(operation,await body(req,limits[operation]),mime);
     }catch(e){return json(res,e.status||400,{error:'Invalid or oversized input'});}
+    // Control humano y fuentes: no enviar consultas clínicas a un modelo generativo en esta etapa.
+    if(operation==='chat')return json(res,200,localGuidance(payload.message));
     // Evita duplicar solicitudes de soporte; para otros servicios solo hay fallback
     // si el administrador configuró explícitamente varios proveedores.
     for(const provider of providers.slice(0,operation==='support'?1:2)){

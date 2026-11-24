@@ -1,4 +1,5 @@
 import { API_BASE } from './api-config.js';
+import { redactPersonalData, localGuidance, safeRevision, POLICY_VERSION, sourceNotice, DISCLOSURE } from './ethics.js';
 
 const $ = id => document.getElementById(id);
 const node = (tag, text, cls) => {
@@ -23,6 +24,12 @@ const save = (key, value) => {
 };
 const prefs = () => ({ theme: 'Oscuro', history: false, ...read('prefs', {}) });
 const list = key => { const value = read(key, []); return Array.isArray(value) ? value : []; };
+// Depurar identificadores detectables de registros antiguos sin transmitirlos.
+for(const key of ['history','goals']){
+    const items=list(key);
+    const cleaned=items.filter(x=>x&&typeof x==='object').map(x=>key==='history'?{...x,question:redactPersonalData(x.question),answer:redactPersonalData(x.answer)}:{...x,text:redactPersonalData(x.text)});
+    if(JSON.stringify(cleaned)!==JSON.stringify(items))save(key,cleaned);
+}
 const id = () => globalThis.crypto?.randomUUID?.() ?? Date.now() + '-' + Math.random();
 const home = document.querySelector('.nav-item[title="Chat"]')?.href ?? './';
 const notice = 'No tengo esa información. No dispongo de datos suficientes o fiables para responder con seguridad. Consulta a un profesional de la salud.';
@@ -51,7 +58,7 @@ async function api(operation, payload, type = 'application/json') {
     const base = apiBase();
     if (!base) throw Error('No hay un servidor API configurado.');
     const response = await fetch(base + '/api/' + operation, {
-        method: 'POST', headers: { 'Content-Type': type },
+        method: 'POST', headers: { 'Content-Type': type, 'X-MedAI-Consent': JSON.stringify({version:POLICY_VERSION,operation,accepted:true}) },
         body: type === 'application/json' ? JSON.stringify(payload) : payload,
         signal: AbortSignal.timeout(90000), cache: 'no-store'
     });
@@ -69,7 +76,7 @@ function localRevision(value) {
 function queue(text) {
     if (!text.trim()) { show('Escribe una consulta primero.'); return; }
     try {
-        sessionStorage.setItem('medai:draft', text);
+        sessionStorage.setItem('medai:draft', redactPersonalData(text));
         location.href = home;
     } catch { show('No se pudo transferir el borrador. Copia el texto y abre Chat.'); }
 }
@@ -97,7 +104,7 @@ function reviseUI() {
     const mic = composer.querySelector('[aria-label*="micrófono"]');
     const attach = composer.querySelector('.attach-button');
     const tools = node('div', undefined, 'chat-tools');
-    const info = node('p', 'Puedes escribir, dictar o adjuntar audio/texto. Revisa siempre los nombres, dosis y negaciones antes de enviar. Los audios se procesan solo con tu autorización.', 'muted-copy');
+    const info = node('p', 'Orientación local por reglas. Ocultamos correos, celulares y documentos; elimina nombres y otros datos identificables. No usamos consultas para entrenar ni evaluar. Audio y corrección externa requieren autorización específica.', 'muted-copy');
     const review = node('section', undefined, 'content-panel transcript-review');
     review.hidden = true;
     review.append(node('h2','Revisar texto antes de enviar'));
@@ -110,21 +117,25 @@ function reviseUI() {
     const transcript = (text) => {
         revisionVersion++;
         original.value = text;
-        edited.value = localRevision(text);
+        edited.value = redactPersonalData(localRevision(text));
         review.hidden = false;
         edited.focus();
-        show('Revisa el texto antes de usarlo. No se ha enviado ninguna consulta.');
+        show('Se ocultaron identificadores detectables. Revisa también nombres, direcciones y otros datos. No se ha enviado ninguna consulta al chat.');
     };
     const revised = button('Mejorar redacción con API', async () => {
+        if (busy || recording || recognition) return show('Termina la operación en curso.');
         if (!edited.value.trim()) return show('No hay texto para revisar.');
-        if (!confirm('¿Enviar este texto al proveedor de corrección configurado?')) return;
+        const before = redactPersonalData(edited.value);
+        edited.value = before;
+        if (!confirm('¿Autorizar el envío de este texto revisado al proveedor de corrección? Los patrones detectables de correo, celular y documento se ocultan; elimina otros datos identificables antes de aceptar. No se autoriza entrenamiento ni evaluación.')) return;
         const version = ++revisionVersion;
-        const before = edited.value;
         revised.disabled = true;
         try {
             const r = await api('revise',{text: before});
             if (version === revisionVersion && edited.value === before && typeof r.text === 'string' && r.text.trim()) {
-                edited.value = r.text; show('Compara con el original y verifica que no cambie el significado.');
+                const corrected = redactPersonalData(r.text);
+                if(!safeRevision(before,corrected))throw Error('La revisión cambió números o negaciones. Se conservó el texto anterior.');
+                edited.value = corrected; show('Texto generado con IA. Compara con el original y verifica que no cambie el significado.');
             }
         } catch(e) { show(e.message + ' Puedes editar el texto manualmente.'); }
         finally { revised.disabled = false; }
@@ -132,7 +143,7 @@ function reviseUI() {
     review.append(revised, button('Usar texto revisado', () => {
         if (!edited.value.trim()) return show('El texto está vacío.');
         revisionVersion++;
-        input.value = edited.value; input.dispatchEvent(new Event('input'));
+        input.value = redactPersonalData(edited.value); input.dispatchEvent(new Event('input'));
         review.hidden = true; original.value = ''; edited.value = ''; input.focus();
         show('Texto preparado. Pulsa Enviar cuando estés listo.');
     }), button('Descartar', () => { revisionVersion++; review.hidden=true; original.value=''; edited.value=''; show('Revisión descartada.'); }));
@@ -144,14 +155,14 @@ function reviseUI() {
     async function transcribe(blob) {
         if (busy || recording || recognition) return show('Termina primero la operación de audio.');
         if (blob.size === 0 || blob.size > 10*1024*1024) return show('El audio debe tener entre 1 byte y 10 MB.');
-        if (!confirm('El audio se enviará al servicio de transcripción configurado. Evita incluir datos identificables. ¿Continuar?')) return;
+        if (!confirm('El audio original puede contener tu voz y datos de salud. No puede anonimizarse completamente antes de transcribirlo. Solo un proveedor autorizado para audio y sin entrenamiento/evaluación podrá procesarlo. ¿Autorizas este envío específico?')) return;
         busy=true; send.disabled=true; mic.disabled=true; attach.disabled=true;
         show('Transcribiendo audio…');
         try {
             const mime = (blob.type || 'application/octet-stream').split(';')[0];
             const r = await api('transcribe',blob,mime);
             if (typeof r.text !== 'string' || !r.text.trim()) throw Error('No se recibió una transcripción utilizable.');
-            transcript(r.text);
+            transcript(redactPersonalData(r.text));
         } catch(e) { show(e.message + ' Puedes escribir la consulta o usar dictado del navegador.'); }
         finally { busy=false; send.disabled=false; mic.disabled=false; attach.disabled=false; }
     }
@@ -173,9 +184,11 @@ function reviseUI() {
         if (recognition) {recognition.stop();return;}
         if (busy || recording) return show('Termina primero la operación de audio.');
         if (!Speech) return show('Este navegador no admite dictado directo. Usa Grabar audio o adjunta un archivo.');
-        if (!confirm('El navegador puede enviar tu voz a su proveedor de reconocimiento. Evita datos identificables. ¿Activar micrófono?')) return;
+        // Sin reconocimiento local comprobable, no enviar voz a servicios del navegador.
+        if (!('processLocally' in Speech.prototype)) return show('Dictado externo deshabilitado por privacidad. Usa texto o transcripción autorizada.');
+        if (!confirm('¿Autorizar dictado exclusivamente local? No compartas información identificable.')) return;
         let finalText='', interim='';
-        recognition=new Speech(); recognition.lang='es-CO'; recognition.continuous=true; recognition.interimResults=true;
+        recognition=new Speech(); recognition.processLocally=true; recognition.lang='es-CO'; recognition.continuous=true; recognition.interimResults=true;
         recognition.onresult=e=>{
             interim='';
             for(let i=e.resultIndex;i<e.results.length;i++){
@@ -211,29 +224,33 @@ function reviseUI() {
     composer.prepend(status);
     composer.querySelector('.composer').after(tools,info,chatStatus);
     content?.append(review);
-    function bubble(role,text){
+    function bubble(role,text,metadata){
         const item=node('article',undefined,'assistant-message '+(role==='Tú'?'user-message':''));
-        item.append(node('strong',role),node('p',text));chatLog.append(item);item.scrollIntoView({block:'nearest'});
+        item.append(node('strong',role),node('p',text));
+        if(metadata){
+            item.append(node('p',metadata.disclosure,'muted-copy'),node('p','Regla aplicada: '+metadata.rule,'muted-copy'),node('p',sourceNotice(metadata.sources),'muted-copy'));
+            for(const source of metadata.sources){const link=node('a',source.name,'text-link');link.href=source.url;link.target='_blank';link.rel='noopener noreferrer';item.append(link,node('br'));}
+        }
+        chatLog.append(item);item.scrollIntoView({block:'nearest'});
     }
     send.disabled=false;send.setAttribute('aria-label','Enviar consulta');send.title='Enviar consulta';
     async function submit(){
         if(busy||recording||recognition||!review.hidden)return show('Termina la revisión o grabación antes de enviar.');
-        const question=input.value.trim();if(!question)return show('Escribe una consulta.');
-        if(question.length>12000)return show('La consulta supera 12.000 caracteres.');
-        let base;try{base=apiBase();}catch(e){return show(e.message);}
-        if(!base)return show('API de respuestas no configurada. Tu consulta permanece en el campo de texto.');
-        if(!confirm('¿Enviar el texto revisado al servicio de respuestas de salud configurado?'))return;
-        busy=true;send.disabled=true;mic.disabled=true;attach.disabled=true;record.disabled=true;
-        chatStatus.textContent='Consultando…';bubble('Tú',question);
-        try{
-            const r=await api('chat',{message:question});
-            const answer=typeof r.text==='string'&&r.text.trim()?r.text:notice;
-            bubble('MedAI',answer);
-            if(prefs().history&&!save('history',[{id:id(),question,answer,date:new Date().toISOString()},...list('history')].slice(0,100)))show('No se pudo guardar el historial.');
-            if(input.value.trim()===question){input.value='';input.dispatchEvent(new Event('input'));}
-            chatStatus.textContent='Respuesta recibida. Verifica la información.';
-        }catch(e){bubble('MedAI',notice);chatStatus.textContent=e.message+' Tu texto sigue disponible.';}
-        finally{busy=false;send.disabled=false;mic.disabled=false;attach.disabled=false;record.disabled=false;}
+        const originalQuestion=input.value.trim();
+        if(!originalQuestion)return show('Escribe una consulta.');
+        if(originalQuestion.length>12000)return show('La consulta supera 12.000 caracteres.');
+        const question=redactPersonalData(originalQuestion);
+        if(question!==originalQuestion){
+            input.value=question;input.dispatchEvent(new Event('input'));
+            return show('Se ocultaron correos, celulares o documentos detectados. Revisa otros datos personales y pulsa Enviar nuevamente.');
+        }
+        // Respuestas locales, sin transferencia a un proveedor ni diagnóstico.
+        const result=localGuidance(question);
+        bubble('Tú',question);
+        bubble('MedAI',result.text,result);
+        if(prefs().history&&!save('history',[{id:id(),question,answer:result.text,date:new Date().toISOString(),rule:result.rule,sources:result.sources,disclosure:result.disclosure},...list('history')].slice(0,100)))show('No se pudo guardar el historial.');
+        input.value='';input.dispatchEvent(new Event('input'));
+        chatStatus.textContent='Orientación mediante reglas; no se ha enviado la consulta a un modelo.';
     }
     send.addEventListener('click',submit);
     input.addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();submit();}});
@@ -273,7 +290,7 @@ function sections(){
             check.addEventListener('change',()=>{if(save('goals',list('goals').map(x=>x.id===goal.id?{...x,done:check.checked}:x)))render();else show('No se pudo guardar.');});
             row.append(check,node('span',goal.text),button('Eliminar',()=>{if(save('goals',list('goals').filter(x=>x.id!==goal.id)))render();},'small-action'));output.append(row);
         }if(!output.children.length)output.append(node('p','No hay objetivos guardados.','muted-copy'));}
-        activate('objetivo',()=>{const text=v('objetivo');if(!text)return show('Escribe un objetivo.');if(text.length>200)return show('Máximo 200 caracteres.');if(save('goals',[...list('goals'),{id:id(),text,done:false}])){$('objetivo').value='';render();show('Objetivo guardado localmente.');}else show('No se pudo guardar.');},'Guardar objetivo');
+        activate('objetivo',()=>{const text=redactPersonalData(v('objetivo'));if(!text)return show('Escribe un objetivo.');if(text.length>200)return show('Máximo 200 caracteres.');if(save('goals',[...list('goals'),{id:id(),text,done:false}])){$('objetivo').value='';render();show('Objetivo guardado localmente.');}else show('No se pudo guardar.');},'Guardar objetivo');
         section.querySelector('.section-description').textContent='Los objetivos se guardan en este navegador. Evita datos médicos sensibles.';render();
     }
     if($('buscar')){
@@ -283,7 +300,7 @@ function sections(){
         const output=node('div',undefined,'saved-items');section.append(output);
         function render(){output.replaceChildren();const q=v('buscar').toLocaleLowerCase('es');
             for(const item of list('history').filter(x=>(x.question+' '+x.answer).toLocaleLowerCase('es').includes(q))){
-                const card=node('details',undefined,'saved-row');card.append(node('summary',item.question.slice(0,120)),node('p',item.question),node('p',item.answer),button('Copiar respuesta',()=>copy(item.answer),'small-action'),button('Eliminar',()=>{if(save('history',list('history').filter(x=>x.id!==item.id)))render();},'small-action'));output.append(card);
+                const card=node('details',undefined,'saved-row');card.append(node('summary',item.question.slice(0,120)),node('p',item.question),node('p',item.answer),node('p',item.disclosure||'Respuesta anterior: no se verificaron sus fuentes.','muted-copy'),node('p','Regla: '+(item.rule||'no registrada')+' · '+sourceNotice(Array.isArray(item.sources)?item.sources:[]),'muted-copy'),button('Copiar respuesta',()=>copy(item.answer+'\n\n'+(item.disclosure||'Respuesta anterior sin fuentes verificadas.')+'\n'+sourceNotice(Array.isArray(item.sources)?item.sources:[])),'small-action'),button('Eliminar',()=>{if(save('history',list('history').filter(x=>x.id!==item.id)))render();},'small-action'));output.append(card);
             }if(!output.children.length)output.append(node('p','No hay conversaciones que coincidan.','muted-copy'));}
         $('buscar').addEventListener('input',render);render();
     }
@@ -308,17 +325,17 @@ function sections(){
     }
     if(document.querySelector('h1')?.textContent==='Ayuda'){
         const items=document.querySelectorAll('.faq-list details p');
-        if(items.length>=3){items[0].textContent='MedAI ofrece herramientas de orientación general y preparación de consultas de salud. Las respuestas requieren una API configurada.';items[1].textContent='No. MedAI no sustituye una valoración profesional. Busca atención médica ante una emergencia.';items[2].textContent='El historial está desactivado por defecto. Los objetivos y favoritos son locales; los proveedores externos reciben información únicamente al usar sus funciones. Puedes borrar los datos locales en Configuración.';}
+        if(items.length>=3){items[0].textContent='MedAI ofrece orientación general mediante reglas locales y fuentes revisadas. La generación clínica mediante modelos permanece bloqueada.';items[1].textContent='No. MedAI no sustituye una valoración profesional. Busca atención médica ante una emergencia.';items[2].textContent='El historial está desactivado por defecto. Los objetivos y favoritos son locales; los proveedores externos reciben información únicamente al usar sus funciones. Puedes borrar los datos locales en Configuración.';}
     }
     if($('correo-soporte')){
         const form=$('correo-soporte').closest('form');form.querySelector('fieldset').disabled=false;
         $('correo-soporte').required=true;$('mensaje-soporte').required=true;
         $('estado-soporte').textContent='Si no existe una API de soporte, puedes descargar tu solicitud. No se enviará automáticamente.';
         const action=form.querySelector('.action-button');action.disabled=false;action.textContent='Enviar solicitud';
-        const payload=()=>({email:v('correo-soporte'),reason:v('motivo-soporte'),message:v('mensaje-soporte')});
+        const payload=()=>({email:v('correo-soporte'),reason:redactPersonalData(v('motivo-soporte')),message:redactPersonalData(v('mensaje-soporte'))});
         const valid=()=>form.reportValidity()&&!!v('mensaje-soporte')&&v('motivo-soporte')!=='Seleccionar motivo';
         form.addEventListener('submit',e=>e.preventDefault());
-        action.addEventListener('click',async()=>{if(!valid())return show('Completa correo, motivo y descripción.');if(!confirm('¿Enviar estos datos al servicio de soporte configurado?'))return;action.disabled=true;try{const r=await api('support',payload());if(r.accepted!==true)throw Error('El servicio no confirmó la recepción.');show('Solicitud recibida por soporte.');form.reset();}catch(e){show(e.message+' No se confirmó el envío. Puedes descargar la solicitud.');}finally{action.disabled=false;}});
+        action.addEventListener('click',async()=>{if(!valid())return show('Completa correo, motivo y descripción.');if(!confirm('¿Autorizar el envío del correo de contacto y descripción depurada al servicio de soporte (no al modelo de IA)? No incluyas datos de salud. No se autoriza entrenamiento ni evaluación.'))return;action.disabled=true;try{const r=await api('support',payload());if(r.accepted!==true)throw Error('El servicio no confirmó la recepción.');show('Solicitud recibida por soporte.');form.reset();}catch(e){show(e.message+' No se confirmó el envío. Puedes descargar la solicitud.');}finally{action.disabled=false;}});
         form.append(button('Descargar solicitud',()=>{if(!valid())return show('Completa los campos.');const p=payload();download('Correo: '+p.email+'\nMotivo: '+p.reason+'\n\n'+p.message,'medai-soporte.txt');show('Solicitud descargada; no se ha enviado.');}));
     }
 }

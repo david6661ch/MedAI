@@ -13,6 +13,7 @@ const assets = [
     'img/logo.svg',
     'js/composer.js',
     'js/app.js',
+    'js/ethics.js',
     'js/api-config.js'
 ];
 const navigation = {
