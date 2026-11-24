@@ -1,14 +1,21 @@
 {
     "name": "medai",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "private": true,
-    "description": "Maqueta estática de un asistente de salud en español",
+    "description": "Maqueta navegable de MedAI con MVC y Node.js",
     "scripts": {
-        "build:css": "tailwindcss -i ./css/input.css -o ./css/output.css",
-        "watch:css": "tailwindcss -i ./css/input.css -o ./css/output.css --watch"
+        "start": "node server.js",
+        "dev": "node --watch server.js",
+        "test": "node --test",
+        "build:css": "tailwindcss -i ./public/css/input.css -o ./public/css/output.css",
+        "watch:css": "tailwindcss -i ./public/css/input.css -o ./public/css/output.css --watch"
     },
     "devDependencies": {
         "@tailwindcss/cli": "4.1.10",
         "tailwindcss": "4.1.10"
+    },
+    "type": "module",
+    "engines": {
+        "node": ">=20"
     }
 }

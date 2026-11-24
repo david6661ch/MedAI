@@ -1,0 +1,68 @@
+            <div class="main-content">
+                <section class="welcome tw:text-center" aria-labelledby="bienvenida">
+                    <div class="emblem tw:flex tw:items-center tw:justify-center">
+                        <svg class="hero-logo" aria-hidden="true" focusable="false"><use href="#logo"></use></svg>
+                    </div>
+                    <h1 id="bienvenida">Hola de <span>nuevo.</span></h1>
+                    <p>Consulta información sobre salud, explora síntomas, recibe<br class="desktop-break"> orientación y cuida tu bienestar con IA.</p>
+                </section>
+
+                <!-- Bootstrap organiza las seis tarjetas según el ancho disponible. -->
+                <section class="shortcuts" aria-label="Categorías de consulta">
+                    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-xl-6 g-3">
+                        <div class="col">
+                            <a href="/sintomas" class="quick-card tw:flex tw:flex-col tw:items-center tw:justify-center tw:w-full">
+                                <svg class="icon" aria-hidden="true" focusable="false"><use href="#stethoscope"></use></svg>
+                                <span>Consultar<br>síntomas</span>
+                            </a>
+                        </div>
+                        <div class="col">
+                            <a href="/medicamentos" class="quick-card tw:flex tw:flex-col tw:items-center tw:justify-center tw:w-full">
+                                <svg class="icon" aria-hidden="true" focusable="false"><use href="#pill"></use></svg>
+                                <span>Información de<br>medicamentos</span>
+                            </a>
+                        </div>
+                        <div class="col">
+                            <a href="/prevencion" class="quick-card tw:flex tw:flex-col tw:items-center tw:justify-center tw:w-full">
+                                <svg class="icon" aria-hidden="true" focusable="false"><use href="#shield"></use></svg>
+                                <span>Prevención<br>y vacunas</span>
+                            </a>
+                        </div>
+                        <div class="col">
+                            <a href="/habitos" class="quick-card tw:flex tw:flex-col tw:items-center tw:justify-center tw:w-full">
+                                <svg class="icon" aria-hidden="true" focusable="false"><use href="#apple"></use></svg>
+                                <span>Hábitos<br>saludables</span>
+                            </a>
+                        </div>
+                        <div class="col">
+                            <a href="/educacion" class="quick-card tw:flex tw:flex-col tw:items-center tw:justify-center tw:w-full">
+                                <svg class="icon" aria-hidden="true" focusable="false"><use href="#book"></use></svg>
+                                <span>Educación<br>en salud</span>
+                            </a>
+                        </div>
+                        <div class="col">
+                            <a href="/orientacion" class="quick-card tw:flex tw:flex-col tw:items-center tw:justify-center tw:w-full">
+                                <svg class="icon" aria-hidden="true" focusable="false"><use href="#clipboard"></use></svg>
+                                <span>Orientación<br>general</span>
+                            </a>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <section class="composer-area" aria-label="Escribir una consulta">
+                <div class="composer tw:flex tw:items-center tw:gap-3">
+                    <button type="button" class="icon-button attach-button" aria-label="Adjuntar archivos (próximamente)" disabled>
+                        <svg class="icon" aria-hidden="true" focusable="false"><use href="#plus"></use></svg>
+                    </button>
+                    <label class="visually-hidden" for="consulta">Tu pregunta sobre salud</label>
+                    <textarea id="consulta" class="message-input tw:w-full" rows="1" placeholder="Haz una pregunta sobre tu salud..." aria-describedby="aviso-medico"></textarea>
+                    <button type="button" class="icon-button" aria-label="Usar micrófono (próximamente)" disabled>
+                        <svg class="icon" aria-hidden="true" focusable="false"><use href="#mic"></use></svg>
+                    </button>
+                    <button type="button" class="icon-button send-button" aria-label="Enviar consulta (próximamente)" disabled>
+                        <svg class="icon" aria-hidden="true" focusable="false"><use href="#send"></use></svg>
+                    </button>
+                </div>
+                <p class="medical-notice" id="aviso-medico"><svg class="icon" aria-hidden="true" focusable="false"><use href="#info"></use></svg> <span>MedAI ofrece orientación general sobre salud. No sustituye el diagnóstico ni la atención de un profesional médico.</span></p>
+            </section>

@@ -1,36 +1,85 @@
-# MedAI
+# MedAI — versión 2.0 (MVC)
 
-Maqueta estática de un asistente de orientación general en salud, en español. El diseño toma como referencia la imagen de MedAI: tema oscuro, acentos azules, navegación lateral y seis accesos rápidos.
+Maqueta web en español de un asistente de orientación general en salud. Conserva el diseño oscuro de la versión inicial. La navegación entre vistas funciona, pero no existe IA, diagnóstico, almacenamiento, autenticación ni procesamiento de consultas.
 
-## Ejecutar
+## Inicio rápido
 
-1. Descomprime el archivo y abre la carpeta `MedAI` en VS Code.
-2. Abre `index.html` directamente en el navegador o con Live Server. No necesitas instalar dependencias para ver la maqueta: Bootstrap y Tailwind compilado se incluyen localmente.
-3. Para modificar las utilidades de Tailwind, ejecuta `npm install` y luego `npm run watch:css` (requiere acceso al registro npm). `npm run build:css` compila una sola vez.
+Requisito: Node.js 20 o superior. Abre la carpeta MedAI-MVC en VS Code, abre la terminal y ejecuta:
 
-## Estructura
+```bash
+npm start
+```
 
-- `index.html`: HTML semántico de la página.
-- `css/styles.css`: estilos propios, variables, estados visuales y media queries.
-- `css/input.css`: configuración de utilidades Tailwind, con prefijo `tw:` y sin Preflight para evitar conflictos con Bootstrap.
-- `css/output.css`: utilidades Tailwind v4.1.10 ya compiladas.
-- `css/vendor/bootstrap.min.css`: Bootstrap v5.3.6 (MIT), utilizado principalmente para la cuadrícula y utilidades de accesibilidad.
-- `img/`: logotipo SVG. Los iconos reutilizables se definen al principio del HTML.
+Abre http://127.0.0.1:3000 en tu navegador. No se requiere `npm install` para iniciar porque el servidor usa módulos nativos y las hojas de estilos ya están incluidas. No utilices Live Server ni abras las plantillas directamente: el servidor MVC debe componerlas.
 
-## Historias de usuario
+Para reiniciar automáticamente al cambiar archivos JavaScript:
 
-| ID | Implementación |
+```bash
+npm run dev
+```
+
+Para modificar utilidades de Tailwind (opcional; requiere acceso a npm):
+
+```bash
+npm install
+npm run watch:css
+```
+
+El servidor escucha solo en la máquina local. Si el puerto 3000 está ocupado, en PowerShell puedes ejecutar `$env:PORT=3001; npm start`.
+
+## Arquitectura MVC
+
+```text
+MedAI-MVC/
+├── models/pageModel.js         # Catálogo de páginas y navegación
+├── views/                     # Plantillas HTML y motor de renderizado
+│   ├── layout.html             # Estructura común
+│   ├── partials/               # Menú, iconos, aviso, elemento de navegación
+│   ├── render.js               # Combina plantillas y datos
+│   └── ...                     # Una plantilla por página y una 404
+├── controllers/pageController.js # Coordina modelo y vista
+├── routes/pageRoutes.js        # Enrutamiento y recursos estáticos
+├── public/
+│   ├── css/                    # CSS propio, Bootstrap y Tailwind
+│   └── img/logo.svg
+├── tests/routes.test.js        # Pruebas HTTP
+├── server.js                   # Servidor HTTP de Node.js
+└── package.json
+```
+
+Flujo: navegador → server.js → pageRoutes.js → pageController.js → pageModel.js → render.js → HTML → navegador.
+
+El modelo contiene metadatos de navegación, no una base de datos. El controlador selecciona la página y el estado HTTP. La vista reutiliza el mismo menú y layout. Se eligió JavaScript con Node.js nativo para evitar una dependencia de servidor adicional; no se usa Express ni JavaScript del lado del cliente.
+
+## Rutas
+
+| Ruta | Vista |
 | --- | --- |
-| HU-01 | Identidad, logotipo y paleta de colores. |
-| HU-02 | Navegación lateral estática, elemento activo y estados hover. |
-| HU-03 | Bienvenida y descripción. |
-| HU-04 | Seis tarjetas con iconos y cuadrícula de Bootstrap. |
-| HU-05 | Área de texto editable y estados focus. |
-| HU-06 | Botones de adjuntar, micrófono y envío, sin acciones. |
-| HU-07 | Diseño adaptable: navegación compacta y tarjetas reorganizadas. |
-| HU-08 | HTML semántico, etiquetas accesibles, foco visible y enlace de salto. |
-| HU-09 | Aviso de limitaciones de la orientación médica. |
+| `/` | Chat / bienvenida |
+| `/sintomas` | Síntomas |
+| `/bienestar` | Salud y bienestar |
+| `/medicamentos` | Medicamentos |
+| `/prevencion` | Prevención y vacunas |
+| `/habitos` | Hábitos saludables |
+| `/historial` | Historial vacío |
+| `/favoritos` | Favoritos vacíos |
+| `/configuracion` | Configuración ilustrativa |
+| `/ayuda` | Ayuda y preguntas frecuentes |
+| `/educacion` | Educación en salud |
+| `/orientacion` | Orientación general |
 
-## Alcance y decisiones
+Las dos últimas se abren mediante tarjetas de inicio y enlaces contextuales. Las direcciones no reconocidas devuelven una página 404.
 
-No incluye JavaScript, integración con IA, envío de consultas, navegación entre páginas, procesamiento de información médica, ni almacenamiento de datos. Los botones de funciones futuras se marcan con `aria-disabled="true"` y no ejecutan acciones. El campo de consulta permite escribir como parte de la maqueta. En móviles el menú se convierte en una barra de iconos estática, sin hamburguesa ni scripts. Se omiten los controles de ventana del diseño original porque corresponden al sistema operativo, no a una página web. Se añade un aviso médico no presente en la referencia. Los iconos son SVG locales. No se incluye `package-lock.json` porque no se ejecutó `npm install` en el entorno sin acceso al registro.
+## Cómo ampliar el proyecto
+
+1. Crea una plantilla HTML en `views/` siguiendo una vista existente.
+2. Registra su ruta, nombre e icono en `models/pageModel.js`. Si debe salir en el menú, asigna un grupo (`primary`, `secondary` o `utility`).
+3. El controlador general y el layout la cargarán sin duplicar código.
+4. Añade estilos específicos en `public/css/styles.css`. Bootstrap controla la cuadrícula y Tailwind usa prefijo `tw:` y no activa Preflight, como en la primera versión.
+
+## Alcance y pruebas
+
+- Los botones y campos de las funciones médicas son ilustrativos. El cuadro de chat permite escribir localmente, pero no envía información. No introduzcas datos sensibles.
+- Las preguntas frecuentes se expanden mediante HTML nativo (`details`). Los enlaces internos funcionan.
+- `npm test` comprueba las rutas, recursos, página 404, archivos no públicos y métodos HTTP.
+- No es un servicio médico, ni está preparado para un despliegue en producción. No se han realizado auditorías de seguridad o accesibilidad completas.

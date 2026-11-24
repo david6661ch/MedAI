@@ -3,5 +3,5 @@
 @theme prefix(tw) {
     --spacing: 0.25rem;
 }
-@source "../index.html";
+@source "../../views";
 @tailwind utilities;
