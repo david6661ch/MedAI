@@ -11,6 +11,7 @@ const assets = new Map([
     ['/img/logo.svg', 'image/svg+xml'],
     ['/js/composer.js', 'text/javascript; charset=utf-8'],
     ['/js/app.js', 'text/javascript; charset=utf-8'],
+    ['/js/audio.js', 'text/javascript; charset=utf-8'],
     ['/js/ethics.js', 'text/javascript; charset=utf-8'],
     ['/js/api-config.js', 'text/javascript; charset=utf-8']
 ]);

@@ -1,4 +1,5 @@
 import { API_BASE } from './api-config.js';
+import { prepareAudio } from './audio.js';
 import { redactPersonalData, localGuidance, safeRevision, POLICY_VERSION, sourceNotice, DISCLOSURE } from './ethics.js';
 
 const $ = id => document.getElementById(id);
@@ -64,7 +65,7 @@ async function api(operation, payload, type = 'application/json') {
     });
     if (!response.ok) {
         const detail = await response.json().catch(()=>({}));
-        const messages = { PROVIDER_KEY:'La clave del proveedor no está configurada o fue rechazada.', PROVIDER_QUOTA:'El proveedor alcanzó su límite de uso. Intenta más tarde.', PROVIDER_AUDIO:'El proveedor rechazó el formato o contenido del audio.', PROVIDER_EMPTY:'El proveedor no devolvió texto. Habla claramente y prueba una grabación más larga.', PROVIDER_TIMEOUT:'El proveedor tardó demasiado en responder.', PROVIDER_UNAVAILABLE:'No se pudo contactar con el proveedor.', PROVIDER_FORBIDDEN:'El proveedor denegó el acceso al modelo.' };
+        const messages = { PROVIDER_KEY:'La clave del proveedor no está configurada o fue rechazada.', PROVIDER_QUOTA:'El proveedor alcanzó su límite de uso. Intenta más tarde.', PROVIDER_AUDIO:'El proveedor rechazó el formato o contenido del audio.', PROVIDER_SILENCE:'Whisper detectó probable silencio. Escucha el audio y prueba otro micrófono.', PROVIDER_EMPTY:'El proveedor no devolvió texto. Habla claramente y prueba una grabación más larga.', PROVIDER_TIMEOUT:'El proveedor tardó demasiado en responder.', PROVIDER_UNAVAILABLE:'No se pudo contactar con el proveedor.', PROVIDER_FORBIDDEN:'El proveedor denegó el acceso al modelo.' };
         if(messages[detail.code]) throw Error(messages[detail.code]);
         if (response.status === 503) throw Error('Servicio no configurado o sin aprobación de privacidad. Revisa /api/status y .env.');
         throw Error('No se pudo completar la solicitud (' + response.status + ').');
@@ -154,11 +155,37 @@ function reviseUI() {
     chatLog.setAttribute('aria-label','Conversación'); chatLog.setAttribute('aria-live','polite');
     const content = main.querySelector('.main-content');
     content?.append(chatLog);
+    const audioPreview=node('section',undefined,'content-panel');audioPreview.hidden=true;
+    const player=node('audio');player.controls=true;player.preload='metadata';player.style.width='100%';
+    const audioDetail=node('p','','muted-copy');
+    let pendingAudio=null,previewUrl='',previewVersion=0;
+    function clearAudio(){previewVersion++;player.pause();player.removeAttribute('src');player.load();if(previewUrl)URL.revokeObjectURL(previewUrl);previewUrl='';pendingAudio=null;audioPreview.hidden=true;}
+    const sendAudio=button('Transcribir audio',async()=>{if(!pendingAudio)return;await transcribe(pendingAudio);});
+    audioPreview.append(node('h2','Escuchar grabación antes de transcribir'),audioDetail,player,sendAudio,button('Descartar audio',()=>{if(!busy)clearAudio();}));
+    content?.append(audioPreview);
+    async function previewAudio(blob){
+        if(busy||recording||starting||recognition||leaving)return show('Termina primero la operación de audio.');
+        if(!blob.size||blob.size>10*1024*1024)return show('El audio está vacío o supera 10 MB.');
+        clearAudio();const version=previewVersion;busy=true;sendAudio.disabled=true;show('Comprobando grabación…');
+        let prepared=null;
+        try{prepared=await prepareAudio(blob);}catch{/* Algunos navegadores no decodifican todos los contenedores. */}
+        finally{busy=false;}
+        if(version!==previewVersion||leaving)return;
+        const stats=prepared?.stats;
+        pendingAudio=prepared?.blob.size<=10*1024*1024?prepared.blob:blob;
+        previewUrl=URL.createObjectURL(pendingAudio);player.src=previewUrl;audioPreview.hidden=false;
+        const weak=stats&&(stats.peak<0.005||stats.rms<0.0005);
+        const short=stats&&stats.seconds<0.8;
+        sendAudio.disabled=!!(weak||short);
+        audioDetail.textContent=stats?stats.seconds.toFixed(1)+' s · nivel de señal '+(stats.peak*100).toFixed(1)+'% · '+(pendingAudio.type==='audio/wav'?'WAV mono':'audio original'):'No se pudo medir el audio en este navegador. Escúchalo antes de enviar.';
+        show(weak?'La grabación está casi en silencio. Comprueba el micrófono y vuelve a grabar.':short?'Grabación demasiado corta. Habla unos segundos y vuelve a grabar.':'Escucha la grabación. Si contiene tu frase completa, pulsa Transcribir audio. Aún no se envió nada.');
+        audioPreview.scrollIntoView({block:'nearest'});
+    }
     const audioFile = node('input'); audioFile.type='file'; audioFile.accept='audio/*,.webm,.m4a,.mp3,.wav,.ogg,.txt,text/plain'; audioFile.hidden=true;
     async function transcribe(blob) {
         if (busy || recording || starting || recognition || leaving) return show('Termina primero la operación de audio.');
         if (blob.size === 0 || blob.size > 10*1024*1024) return show('El audio debe tener entre 1 byte y 10 MB.');
-        busy=true; send.disabled=true; mic.disabled=true; attach.disabled=true; record.disabled=true; localDictation.disabled=true;
+        busy=true; send.disabled=true; mic.disabled=true; attach.disabled=true; record.disabled=true; localDictation.disabled=true; sendAudio.disabled=true;
         try {
             if (!await checkTranscription() || leaving) return;
             if (!confirm('El audio original puede contener tu voz y datos de salud. No puede anonimizarse completamente antes de transcribirlo. Solo un proveedor autorizado para audio y sin entrenamiento/evaluación podrá procesarlo. ¿Autorizas este envío específico?')) return;
@@ -166,9 +193,11 @@ function reviseUI() {
             const mime = (blob.type || 'application/octet-stream').split(';')[0];
             const r = await api('transcribe',blob,mime);
             if (typeof r.text !== 'string' || !r.text.trim()) throw Error('No se recibió una transcripción utilizable.');
-            transcript(redactPersonalData(r.text));
+            if(leaving)return;
+            clearAudio();transcript(redactPersonalData(r.text));
+            if(r.qualityWarning)show('Whisper indica posible baja confianza o silencio. Compara la transcripción con lo que dijiste y corrige antes de usarla.');
         } catch(e) { show(e.message + ' Puedes volver a intentar o escribir la consulta.'); }
-        finally { busy=false; send.disabled=false; mic.disabled=false; attach.disabled=false; record.disabled=false; localDictation.disabled=false; }
+        finally { busy=false; send.disabled=false; mic.disabled=false; attach.disabled=false; record.disabled=false; localDictation.disabled=false; sendAudio.disabled=false; }
     }
     audioFile.addEventListener('change',async () => {
         const file=audioFile.files[0]; audioFile.value='';
@@ -176,12 +205,18 @@ function reviseUI() {
         if(file.type==='text/plain'||file.name.toLowerCase().endsWith('.txt')){
             if(file.size>100000) return show('El archivo de texto supera 100 KB.');
             transcript(await file.text());
-        } else await transcribe(file);
+        } else await previewAudio(file);
     });
     attach.disabled=false; attach.setAttribute('aria-label','Adjuntar audio o archivo de texto');
     attach.title='Adjuntar audio o texto';
     attach.addEventListener('click',()=>audioFile.click());
     tools.append(audioFile,button('Revisar redacción',()=>{if(input.value.trim())transcript(input.value);else show('Escribe un texto primero.');},'small-action'));
+    const deviceSelect=node('select',undefined,'form-select');deviceSelect.setAttribute('aria-label','Micrófono de entrada');
+    const defaultDevice=node('option','Micrófono predeterminado');defaultDevice.value='';deviceSelect.append(defaultDevice);
+    async function refreshDevices(){
+        try{const devices=await navigator.mediaDevices.enumerateDevices();const chosen=deviceSelect.value;deviceSelect.replaceChildren(defaultDevice);for(const [i,d] of devices.filter(d=>d.kind==='audioinput'&&d.deviceId&&d.deviceId!=='default').entries()){const opt=node('option',d.label||'Micrófono '+(i+1));opt.value=d.deviceId;deviceSelect.append(opt);}if([...deviceSelect.options].some(o=>o.value===chosen))deviceSelect.value=chosen;}catch{}
+    }
+    tools.append(deviceSelect);refreshDevices();navigator.mediaDevices?.addEventListener?.('devicechange',refreshDevices);
     const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
     mic.disabled=false; mic.setAttribute('aria-label','Grabar o detener audio para transcripción'); mic.title='Grabar audio para transcripción';
     const localDictation = button('Dictado local',()=>{
@@ -234,14 +269,15 @@ function reviseUI() {
         try{
             if(!await checkTranscription()){resetRecording();return;}
             if(!confirm('¿Permitir grabación local? Podrás decidir después si envías el audio a transcripción.')){resetRecording();return;}
-            stream=await navigator.mediaDevices.getUserMedia({audio:true});
+            stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true,...(deviceSelect.value?{deviceId:{exact:deviceSelect.value}}:{})}});
+            refreshDevices();
             if(leaving){resetRecording();return;}
             const formats=['audio/webm;codecs=opus','audio/webm','audio/mp4','audio/ogg;codecs=opus'];
             const mimeType=formats.find(type=>MediaRecorder.isTypeSupported(type));
-            const chunks=[];let size=0,failed=false;
+            const chunks=[];let size=0,failed=false;const startedAt=performance.now();
             const capture=new MediaRecorder(stream,mimeType?{mimeType}:undefined);
             recorder=capture;
-            capture.ondataavailable=e=>{if(!e.data.size)return;size+=e.data.size;if(size<=10*1024*1024)chunks.push(e.data);else if(capture.state==='recording')capture.stop();};
+            capture.ondataavailable=e=>{if(!e.data.size)return;size+=e.data.size;if(size<=10*1024*1024)chunks.push(e.data);if((size>10*1024*1024||performance.now()-startedAt>=300000)&&capture.state==='recording')capture.stop();};
             capture.onerror=()=>{failed=true;resetRecording();show('Error al grabar el audio.');};
             capture.onstop=async()=>{
                 if(failed||leaving){resetRecording();return;}
@@ -249,7 +285,7 @@ function reviseUI() {
                 resetRecording();
                 if(size>10*1024*1024)return show('Grabación demasiado larga (máximo 10 MB).');
                 if(!blob.size)return show('No se capturó audio. Comprueba el permiso y el micrófono.');
-                await transcribe(blob);
+                await previewAudio(blob);
             };
             capture.start(250);starting=false;recording=true;record.disabled=false;mic.disabled=false;
             record.textContent='Detener grabación';mic.classList.add('recording');mic.setAttribute('aria-pressed','true');
@@ -275,7 +311,7 @@ function reviseUI() {
     }
     send.disabled=false;send.setAttribute('aria-label','Enviar consulta');send.title='Enviar consulta';
     async function submit(){
-        if(busy||recording||starting||recognition||!review.hidden)return show('Termina la revisión o grabación antes de enviar.');
+        if(busy||recording||starting||recognition||!review.hidden||!audioPreview.hidden)return show('Termina la revisión o grabación antes de enviar.');
         const originalQuestion=input.value.trim();
         if(!originalQuestion)return show('Escribe una consulta.');
         if(originalQuestion.length>12000)return show('La consulta supera 12.000 caracteres.');
@@ -295,7 +331,7 @@ function reviseUI() {
     send.addEventListener('click',submit);
     input.addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();submit();}});
     try{const draft=sessionStorage.getItem('medai:draft');if(draft){sessionStorage.removeItem('medai:draft');transcript(draft);}}catch{}
-    window.addEventListener('pagehide',()=>{leaving=true;recognition?.abort();if(recorder?.state==='recording')recorder.stop();stream?.getTracks().forEach(t=>t.stop());});
+    window.addEventListener('pagehide',()=>{leaving=true;clearAudio();recognition?.abort();if(recorder?.state==='recording')recorder.stop();stream?.getTracks().forEach(t=>t.stop());});
     window.addEventListener('pageshow',()=>{leaving=false;});
 }
 function activate(id, handler, text) {

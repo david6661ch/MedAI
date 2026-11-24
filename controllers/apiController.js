@@ -60,7 +60,7 @@ async function upstream(operation, provider, payload, mime) {
     }else if(provider.kind==='openai'&&operation==='transcribe'){
         if(!provider.model)throw Error('missing model');
         const ext={'audio/mpeg':'mp3','audio/mp3':'mp3','audio/wav':'wav','audio/x-wav':'wav','audio/mp4':'m4a','video/mp4':'mp4','audio/x-m4a':'m4a','audio/ogg':'ogg','application/ogg':'ogg','audio/flac':'flac'}[mime]||'webm';
-        data=new FormData(); data.append('file',new Blob([payload],{type:mime}),'audio.'+ext);data.append('model',provider.model);data.append('language','es');data.append('response_format','json');
+        data=new FormData(); data.append('file',new Blob([payload],{type:mime}),'audio.'+ext);data.append('model',provider.model);data.append('language','es');data.append('response_format',provider.model.startsWith('whisper-')?'verbose_json':'json');data.append('temperature','0');
     }else if(operation==='transcribe'){
         headers['Content-Type']=mime;data=payload;
     }else{
@@ -78,9 +78,18 @@ async function upstream(operation, provider, payload, mime) {
     if(operation==='support'){if(result.accepted!==true)throw Error('not confirmed');return {accepted:true};}
     const text=provider.kind==='openai'&&operation!=='transcribe'?result.choices?.[0]?.message?.content:result.text;
     if(typeof text!=='string'||!text.trim()||text.length>40000){const error=Error('invalid response');error.code='PROVIDER_EMPTY';throw error;}
+    let qualityWarning=false;
+    if(operation==='transcribe' && Array.isArray(result.segments) && result.segments.length){
+        const segments=result.segments.filter(s=>s&&typeof s.text==='string'&&s.text.trim());
+        // Heurísticas conservadoras: no eliminar palabras de segmentos dudosos.
+        if(segments.length&&segments.every(s=>Number.isFinite(s.no_speech_prob)&&s.no_speech_prob>=0.85&&Number.isFinite(s.avg_logprob)&&s.avg_logprob<=-1)){
+            const error=Error('probable silence');error.code='PROVIDER_SILENCE';throw error;
+        }
+        qualityWarning=segments.some(s=>(Number.isFinite(s.no_speech_prob)&&s.no_speech_prob>=0.6)||(Number.isFinite(s.avg_logprob)&&s.avg_logprob<=-1));
+    }
     const redacted=redactPersonalData(text);
     if(operation==='revise' && !safeRevision(payload.text,redacted))throw Error('unsafe revision');
-    return {text:redacted,generatedBy:'ai',policyVersion:POLICY_VERSION};
+    return {text:redacted,generatedBy:'ai',policyVersion:POLICY_VERSION,...(operation==='transcribe'?{qualityWarning}:{})};
 }
 export async function handleApi(req,res,path){
     const operation=path.slice('/api/'.length);

@@ -13,6 +13,7 @@ const assets = [
     'img/logo.svg',
     'js/composer.js',
     'js/app.js',
+    'js/audio.js',
     'js/ethics.js',
     'js/api-config.js'
 ];

@@ -47,3 +47,6 @@ Con el proveedor Whisper aprobado en `.env`, ejecuta `npm run start:api`, abre `
 
 ## Configuración simplificada de Groq (Whisper)
 Requiere Node.js 20.12+ (22 recomendado). Conserva tu `.env` con `GROQ_API_KEY`. Ejecuta `npm run setup:groq`: verifica la clave y disponibilidad del modelo sin enviar audio, y solicita confirmar la revisión de privacidad antes de guardar las dos aprobaciones locales. El preset selecciona Whisper Large V3 sin JSON manual; configuraciones explícitas conservan prioridad. `npm start` y `npm run start:api` cargan `.env` automáticamente si existe. No se imprime ni sube la clave. No se habilitan automáticamente modelos conversacionales ni backend remoto. Prueba solo audio ficticio.
+
+### Diagnóstico de audio
+Selecciona el micrófono, graba y escucha la reproducción local antes de pulsar Transcribir audio. Cuando el navegador permite decodificar, se convierte a WAV PCM mono 16 kHz y se comprueba la amplitud; no es un detector de voz. Whisper usa verbose_json y marca segmentos de baja confianza, rechazando resultados globalmente dudosos de probable silencio. No se elimina una palabra concreta ni se garantiza exactitud. Si no se puede decodificar, se ofrece el audio original para revisión. La grabación se conserva temporalmente en memoria y se descarta al cerrar, descartar o transcribir correctamente.

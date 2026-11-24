@@ -18,7 +18,7 @@ test('Exportación estática: páginas, enlaces y recursos', async () => {
             await access(new URL(path.replace(/^(?:\.\/|\/MedAI\/)/,''),root));
         }
     }
-    for(const path of ['js/app.js','js/api-config.js','js/composer.js','js/ethics.js','css/styles.css']){
+    for(const path of ['js/app.js','js/audio.js','js/api-config.js','js/composer.js','js/ethics.js','css/styles.css']){
         const a=await readFile(new URL('../public/'+path,import.meta.url));
         const b=await readFile(new URL(path,root));
         assert.deepEqual(a,b);
@@ -85,7 +85,7 @@ test('Gateway de prueba: datos ficticios, proveedores alternativos y errores', a
 
 
 test('Whisper: envío multipart, idioma español y errores controlados', async () => {
-    let status=200, calls=0;
+    let status=200, calls=0, quality='normal';
     const upstream=createServer(async(req,res)=>{
         const chunks=[];for await(const chunk of req)chunks.push(chunk);
         const raw=Buffer.concat(chunks).toString();
@@ -95,9 +95,9 @@ test('Whisper: envío multipart, idioma español y errores controlados', async (
         assert.match(raw,/name="file"; filename="audio.webm"/);
         assert.match(raw,/name="model"\r\n\r\nwhisper-large-v3/);
         assert.match(raw,/name="language"\r\n\r\nes/);
-        assert.match(raw,/name="response_format"\r\n\r\njson/);
+        assert.match(raw,/name="response_format"\r\n\r\nverbose_json/);
         res.writeHead(status,{'Content-Type':'application/json'});
-        res.end(JSON.stringify(status===200?{text:'Prueba ficticia en español.'}:{error:'Detalle privado del proveedor'}));
+        res.end(JSON.stringify(status===200?(quality==='silence'?{text:'Gracias',segments:[{text:'Gracias',no_speech_prob:0.95,avg_logprob:-1.4}]}:quality==='word'?{text:'Gracias',segments:[{text:'Gracias',no_speech_prob:0.01,avg_logprob:-0.1}]}:quality==='uncertain'?{text:'Texto dudoso',segments:[{text:'Texto dudoso',no_speech_prob:0.7,avg_logprob:-0.4}]}:{text:'Prueba ficticia en español.'}):{error:'Detalle privado del proveedor'}));
     });
     await new Promise(r=>upstream.listen(0,'127.0.0.1',r));
     await new Promise(r=>server.listen(0,'127.0.0.1',r));
@@ -110,6 +110,9 @@ test('Whisper: envío multipart, idioma español y errores controlados', async (
     try{
         assert.equal((await (await fetch(base+'/api/status')).json()).transcribe,true);
         assert.equal((await (await post()).json()).text,'Prueba ficticia en español.');
+        quality='silence';assert.equal((await (await post()).json()).code,'PROVIDER_SILENCE');
+        quality='word';assert.equal((await (await post()).json()).text,'Gracias');
+        quality='uncertain';assert.equal((await (await post()).json()).qualityWarning,true);
         for(const [s,code] of [[401,'PROVIDER_KEY'],[429,'PROVIDER_QUOTA'],[400,'PROVIDER_AUDIO']]){
             status=s;const response=await post();assert.equal(response.status,502);
             const data=await response.json();assert.equal(data.code,code);
@@ -118,7 +121,7 @@ test('Whisper: envío multipart, idioma español y errores controlados', async (
         delete process.env.MEDAI_WHISPER_TEST_KEY;
         assert.equal((await (await fetch(base+'/api/status')).json()).transcribe,false);
         assert.equal((await post()).status,503);
-        assert.equal(calls,4);
+        assert.equal(calls,7);
     }finally{
         for(const key of ['MEDAI_PROVIDER_POLICY_REVIEWED','MEDAI_WHISPER_TEST_KEY','MEDAI_PROVIDER_CONFIG']){
             if(prior[key]===undefined)delete process.env[key];else process.env[key]=prior[key];
