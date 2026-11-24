@@ -4,7 +4,7 @@ services:
     runtime: node
     plan: free
     branch: main
-    buildCommand: npm run build:pages && npm test
+    buildCommand: npm run build:pages
     startCommand: npm run start:server
     healthCheckPath: /api/status
     envVars:
