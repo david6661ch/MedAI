@@ -24,3 +24,8 @@ export function getNavigation(group) {
 }
 
 export const notFoundPage = { view: '404', label: 'Página no encontrada' };
+
+// Catálogo completo para exportar las vistas estáticas.
+export function getPages() {
+    return pages.map(page => ({ ...page }));
+}

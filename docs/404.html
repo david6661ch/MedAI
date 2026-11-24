@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="es" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#101a23">
+    <meta name="description" content="MedAI, interfaz de orientación general sobre salud y bienestar.">
+    <title>Página no encontrada | MedAI</title>
+    <link rel="icon" href="/MedAI/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/MedAI/css/vendor/bootstrap.min.css">
+    <link rel="stylesheet" href="/MedAI/css/output.css">
+    <link rel="stylesheet" href="/MedAI/css/styles.css">
+</head>
+<body>
+        <!-- Biblioteca de símbolos SVG reutilizables. -->
+    <svg class="icon-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+        <symbol id="logo" viewBox="0 0 24 24"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.9-8.6a5.5 5.5 0 0 0-.1-7.8Z"/><path d="M3 12h5l2-4 3 8 2-4h6"/></symbol>
+        <symbol id="chat" viewBox="0 0 24 24"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5 9 9 0 0 1-3.5-.7L3 21l1.7-5.2a8.5 8.5 0 1 1 16.3-4.3Z"/><path d="M8 12h.01M12 12h.01M16 12h.01" stroke-width="2.5"/></symbol>
+        <symbol id="symptoms" viewBox="0 0 24 24"><path d="M6 3v8a3 3 0 0 0 6 0V3a2 2 0 1 0-4 0v8"/><path d="M5 11v4a4 4 0 0 0 8 0v-4a4 4 0 0 0-8 0Z"/></symbol>
+        <symbol id="stethoscope" viewBox="0 0 24 24"><path d="M6 3H4v6a6 6 0 0 0 12 0V3h-2M6 2v3M14 2v3M10 15v2a4 4 0 0 0 8 0v-2"/><circle cx="18" cy="12" r="3"/></symbol>
+        <symbol id="heart" viewBox="0 0 24 24"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.9-8.6a5.5 5.5 0 0 0-.1-7.8Z"/></symbol>
+        <symbol id="pill" viewBox="0 0 24 24"><path d="m9 20 11-11a4.2 4.2 0 0 0-6-6L3 14a4.2 4.2 0 0 0 6 6Z"/><path d="m8.5 8.5 7 7"/></symbol>
+        <symbol id="shield" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="M12 8v8M8 12h8"/></symbol>
+        <symbol id="apple" viewBox="0 0 24 24"><path d="M12 7c-2-4-7-3-9 1-2 4 1 13 5 13 2 0 2-1 4-1s2 1 4 1c4 0 7-9 5-13-2-4-7-5-9-1Z"/><path d="M12 7c0-4 2-5 5-5 0 3-2 5-5 5Z"/></symbol>
+        <symbol id="book" viewBox="0 0 24 24"><path d="M12 6C9 3 5 3 2 4v15c4-1 7-1 10 2 3-3 6-3 10-2V4c-3-1-7-1-10 2Zm0 0v15"/></symbol>
+        <symbol id="clipboard" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="17" rx="2"/><rect x="9" y="2" width="6" height="5" rx="1"/><path d="M12 11v7M8.5 14.5h7"/></symbol>
+        <symbol id="clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+        <symbol id="bookmark" viewBox="0 0 24 24"><path d="M6 3h12v19l-6-4-6 4Z"/></symbol>
+        <symbol id="settings" viewBox="0 0 24 24"><path d="m10 2-.6 3-2 .9-2.6-1.5-2.4 2.4L4 9.4l-.8 2.1-3 .5v3l3 .6.8 2-1.5 2.6 2.4 2.4 2.6-1.5 2 .9.5 3h3l.6-3 2-.9 2.6 1.5 2.4-2.4-1.5-2.6.8-2 3-.6v-3l-3-.5-.8-2.1 1.5-2.6-2.4-2.4-2.6 1.5-2-.9-.6-3Z" transform="translate(2 0) scale(.83)"/><circle cx="12" cy="11" r="3"/></symbol>
+        <symbol id="help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9 9a3 3 0 1 1 5 2.2c-1.3 1-2 1.5-2 3M12 17h.01"/></symbol>
+        <symbol id="headset" viewBox="0 0 24 24"><path d="M3 14v-2a9 9 0 0 1 18 0v2M21 17v1a4 4 0 0 1-4 4h-3"/><rect x="3" y="12" width="5" height="7" rx="2"/><rect x="16" y="12" width="5" height="7" rx="2"/><path d="M11 22h3"/></symbol>
+        <symbol id="plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+        <symbol id="mic" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="13" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8"/></symbol>
+        <symbol id="send" viewBox="0 0 24 24"><path d="m22 2-7 20-4-9-9-4 20-7ZM22 2 11 13"/></symbol>
+        <symbol id="info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 11v6M12 7h.01"/></symbol>
+        <symbol id="menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+    </svg>
+
+    <a class="skip-link" href="#contenido">Ir al contenido principal</a>
+    <div class="app-shell">
+                <aside class="sidebar" aria-label="Barra lateral">
+            <header class="brand tw:flex tw:items-center tw:gap-3">
+                <svg class="brand-logo" aria-hidden="true" focusable="false"><use href="#logo"></use></svg>
+                <div class="brand-text">
+                    <p class="brand-name">Med<span>AI</span></p>
+                    <p class="brand-tagline">Tu asistente de salud con IA</p>
+                </div>
+            </header>
+            <nav class="navigation" aria-label="Navegación principal">
+                <ul class="nav-group list-unstyled">                    <li>
+                        <a href="/MedAI/index.html" class="nav-item tw:flex tw:items-center tw:gap-3 tw:w-full"  title="Chat">
+                            <svg class="icon" aria-hidden="true" focusable="false"><use href="#chat"></use></svg>
+                            <span>Chat</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/MedAI/sintomas.html" class="nav-item tw:flex tw:items-center tw:gap-3 tw:w-full"  title="Síntomas">
+                            <svg class="icon" aria-hidden="true" focusable="false"><use href="#stethoscope"></use></svg>
+                            <span>Síntomas</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/MedAI/bienestar.html" class="nav-item tw:flex tw:items-center tw:gap-3 tw:w-full"  title="Salud y bienestar">
+                            <svg class="icon" aria-hidden="true" focusable="false"><use href="#heart"></use></svg>
+                            <span>Salud y bienestar</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/MedAI/medicamentos.html" class="nav-item tw:flex tw:items-center tw:gap-3 tw:w-full"  title="Medicamentos">
+                            <svg class="icon" aria-hidden="true" focusable="false"><use href="#pill"></use></svg>
+                            <span>Medicamentos</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/MedAI/prevencion.html" class="nav-item tw:flex tw:items-center tw:gap-3 tw:w-full"  title="Prevención">
+                            <svg class="icon" aria-hidden="true" focusable="false"><use href="#shield"></use></svg>
+                            <span>Prevención</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/MedAI/habitos.html" class="nav-item tw:flex tw:items-center tw:gap-3 tw:w-full"  title="Hábitos saludables">
+                            <svg class="icon" aria-hidden="true" focusable="false"><use href="#apple"></use></svg>
+                            <span>Hábitos saludables</span>
+                        </a>
+                    </li>
+</ul>
+                <ul class="nav-group list-unstyled secondary-nav">                    <li>
+                        <a href="/MedAI/historial.html" class="nav-item tw:flex tw:items-center tw:gap-3 tw:w-full"  title="Historial">
+                            <svg class="icon" aria-hidden="true" focusable="false"><use href="#clock"></use></svg>
+                            <span>Historial</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/MedAI/favoritos.html" class="nav-item tw:flex tw:items-center tw:gap-3 tw:w-full"  title="Favoritos">
+                            <svg class="icon" aria-hidden="true" focusable="false"><use href="#bookmark"></use></svg>
+                            <span>Favoritos</span>
+                        </a>
+                    </li>
+</ul>
+            </nav>
+            <nav class="utility-nav" aria-label="Configuración, ayuda y soporte">
+                <ul class="nav-group list-unstyled">                    <li>
+                        <a href="/MedAI/configuracion.html" class="nav-item tw:flex tw:items-center tw:gap-3 tw:w-full"  title="Configuración">
+                            <svg class="icon" aria-hidden="true" focusable="false"><use href="#settings"></use></svg>
+                            <span>Configuración</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/MedAI/ayuda.html" class="nav-item tw:flex tw:items-center tw:gap-3 tw:w-full"  title="Ayuda">
+                            <svg class="icon" aria-hidden="true" focusable="false"><use href="#help"></use></svg>
+                            <span>Ayuda</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/MedAI/soporte.html" class="nav-item tw:flex tw:items-center tw:gap-3 tw:w-full"  title="Soporte técnico">
+                            <svg class="icon" aria-hidden="true" focusable="false"><use href="#headset"></use></svg>
+                            <span>Soporte técnico</span>
+                        </a>
+                    </li>
+</ul>
+            </nav>
+        </aside>
+
+        <main class="main-panel tw:relative inner-panel" id="contenido" tabindex="-1">
+            <div class="page-content">
+    <a class="back-link" href="/MedAI/index.html">Inicio / MedAI</a>
+    <header class="page-heading">
+        <div class="page-icon"><svg class="icon" aria-hidden="true" focusable="false"><use href="#help"></use></svg></div>
+        <div><h1>Página no encontrada</h1><p>La dirección solicitada no corresponde a una sección de MedAI.</p></div>
+    </header>
+<section class="content-panel">
+    <h2>Regresa a MedAI</h2>
+    <p class="section-description">Puedes continuar explorando desde el menú.</p>
+    <div class="empty-state"><svg class="icon" aria-hidden="true" focusable="false"><use href="#help"></use></svg><h3>No encontramos esa página</h3><p>Comprueba la dirección o vuelve al inicio.</p><a class="action-link" href="/MedAI/index.html">Volver al inicio</a></div>
+</section>
+    <p class="medical-notice" id="aviso-medico"><svg class="icon" aria-hidden="true" focusable="false"><use href="#info"></use></svg><span><strong>Soy una IA, puedo cometer errores.</strong> Verifica la información antes de tomar decisiones sobre tu salud. No sustituye el diagnóstico ni la atención de un profesional médico.</span></p>
+
+</div>
+
+        </main>
+    </div>
+</body>
+</html>

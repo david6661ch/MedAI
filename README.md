@@ -85,3 +85,11 @@ Las dos últimas se abren mediante tarjetas de inicio y enlaces contextuales. La
 - Las preguntas frecuentes se expanden mediante HTML nativo (`details`). Los enlaces internos funcionan.
 - `npm test` comprueba las rutas, recursos, página 404, archivos no públicos y métodos HTTP.
 - No es un servicio médico, ni está preparado para un despliegue en producción. No se han realizado auditorías de seguridad o accesibilidad completas.
+
+## GitHub Pages
+
+La carpeta `docs/` contiene una exportación estática completa de las vistas MVC: no requiere Node.js en el navegador ni servidor en GitHub Pages. URL prevista: https://david6661ch.github.io/MedAI/.
+
+En Settings → Pages, selecciona **Deploy from a branch**, rama **main**, carpeta **/docs**, y guarda. La URL se habilita cuando GitHub termina el despliegue.
+
+Cuando modifiques las vistas, ejecuta `npm run build:pages` y sube los cambios de `docs/` junto con los archivos fuente. Si cambias las utilidades Tailwind, recompila antes con `npm run build:css`. La versión local MVC sigue funcionando con `npm start`.
