@@ -28,7 +28,7 @@ for (const path of paths) {
     });
 }
 test('CSS y logo disponibles', async () => {
-    for (const path of ['/css/styles.css', '/css/output.css', '/css/vendor/bootstrap.min.css', '/img/logo.svg']) {
+    for (const path of ['/css/styles.css', '/css/output.css', '/css/vendor/bootstrap.min.css', '/img/logo.svg', '/js/composer.js']) {
         assert.equal((await fetch(base + path)).status, 200);
     }
 });
@@ -62,4 +62,16 @@ test('Advertencia destacada y respuesta futura de respaldo', async () => {
     assert.match(chat, /class="medical-notice-description"/);
     assert.match(chat, /<template id="respuesta-sin-informacion">/);
     assert.match(chat, /No tengo esa información/);
+});
+
+test('Campo de consulta adaptable y recurso JavaScript', async () => {
+    const html = await (await fetch(base + '/')).text();
+    assert.match(html, /<script src="\/js\/composer\.js" defer><\/script>/);
+    const css = await (await fetch(base + '/css/styles.css')).text();
+    assert.match(css, /\.composer-area\s*\{\s*position: sticky;\s*bottom: 0;/);
+    assert.match(css, /field-sizing: content/);
+    const script = await fetch(base + '/js/composer.js');
+    assert.equal(script.status, 200);
+    assert.match(script.headers.get('content-type'), /text\/javascript/);
+    assert.match(await script.text(), /scrollHeight/);
 });

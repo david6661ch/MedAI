@@ -335,3 +335,41 @@ summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
     .medical-notice { padding: 12px; gap: 9px; font-size: 13px; }
     .medical-notice strong { font-size: 15px; }
 }
+
+/* 10. Barra de consulta siempre visible y altura adaptable */
+.main-panel:has(> .composer-area) {
+    padding-bottom: 0;
+}
+.composer-area {
+    position: sticky;
+    bottom: 0;
+    z-index: 3;
+    flex-shrink: 0;
+    padding: 12px 0 max(12px, env(safe-area-inset-bottom));
+    background: var(--background);
+}
+.composer-area > .medical-notice {
+    max-height: 28vh;
+    max-height: 28dvh;
+    overflow-y: auto;
+}
+.composer-area .composer {
+    align-items: flex-end;
+}
+.message-input {
+    height: auto;
+    min-height: 44px;
+    max-height: 200px;
+    max-height: min(200px, 30dvh);
+    resize: none;
+    overflow-y: auto;
+    overflow-wrap: anywhere;
+}
+@supports (field-sizing: content) {
+    .message-input { field-sizing: content; }
+}
+@media (max-width: 575.98px) {
+    .composer-area { padding-top: 8px; }
+    .composer-area > .medical-notice { margin-bottom: 8px; }
+    .message-input { font-size: 16px; min-height: 44px; }
+}

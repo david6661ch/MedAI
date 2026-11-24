@@ -10,7 +10,8 @@ const assets = [
     'css/styles.css',
     'css/vendor/bootstrap.min.css',
     'css/vendor/TAILWIND-LICENSE.txt',
-    'img/logo.svg'
+    'img/logo.svg',
+    'js/composer.js'
 ];
 const navigation = {
     primary: getNavigation('primary'),

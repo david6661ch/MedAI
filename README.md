@@ -49,7 +49,7 @@ MedAI-MVC/
 
 Flujo: navegador → server.js → pageRoutes.js → pageController.js → pageModel.js → render.js → HTML → navegador.
 
-El modelo contiene metadatos de navegación, no una base de datos. El controlador selecciona la página y el estado HTTP. La vista reutiliza el mismo menú y layout. Se eligió JavaScript con Node.js nativo para evitar una dependencia de servidor adicional; no se usa Express ni JavaScript del lado del cliente.
+El modelo contiene metadatos de navegación, no una base de datos. El controlador selecciona la página y el estado HTTP. La vista reutiliza el mismo menú y layout. Se eligió JavaScript con Node.js nativo para evitar una dependencia de servidor adicional; no se usa Express. El único JavaScript del lado del cliente ajusta la altura del campo de consulta en navegadores sin soporte nativo de `field-sizing`.
 
 ## Rutas
 
@@ -97,3 +97,7 @@ Cuando modifiques las vistas, ejecuta `npm run build:pages` y sube los cambios d
 ### Respuesta de respaldo (futura IA)
 
 El mensaje se define en `models/chatModel.js` y se prepara en la plantilla HTML inerte `respuesta-sin-informacion` de `views/chat.html`. Cuando se integre la IA, deberá usarse si no cuenta con información suficiente o fiable, sin inventar respuestas. Por ahora no se muestra ni se activa automáticamente. En una emergencia se debe priorizar la orientación para buscar ayuda urgente.
+
+### Barra de consulta
+
+El campo de texto crece y se reduce según su contenido mediante CSS `field-sizing: content`, con respaldo en `public/js/composer.js`. La barra permanece en la parte inferior durante el desplazamiento del chat (`position: sticky`), conserva el aviso médico y limita la altura del campo para permitir desplazamiento interno cuando el texto es largo. El script no envía ni almacena consultas. La exportación de GitHub Pages incluye este recurso.

@@ -7,7 +7,8 @@ const assets = new Map([
     ['/css/styles.css', 'text/css; charset=utf-8'],
     ['/css/output.css', 'text/css; charset=utf-8'],
     ['/css/vendor/bootstrap.min.css', 'text/css; charset=utf-8'],
-    ['/img/logo.svg', 'image/svg+xml']
+    ['/img/logo.svg', 'image/svg+xml'],
+    ['/js/composer.js', 'text/javascript; charset=utf-8']
 ]);
 
 export async function route(request, response) {
