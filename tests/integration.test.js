@@ -82,3 +82,47 @@ test('Gateway de prueba: datos ficticios, proveedores alternativos y errores', a
         await Promise.all([new Promise(r=>server.close(r)),new Promise(r=>upstream.close(r))]);
     }
 });
+
+
+test('Whisper: envío multipart, idioma español y errores controlados', async () => {
+    let status=200, calls=0;
+    const upstream=createServer(async(req,res)=>{
+        const chunks=[];for await(const chunk of req)chunks.push(chunk);
+        const raw=Buffer.concat(chunks).toString();
+        calls++;
+        assert.equal(req.headers.authorization,'Bearer fictitious-key');
+        assert.match(req.headers['content-type'],/multipart\/form-data; boundary=/);
+        assert.match(raw,/name="file"; filename="audio.webm"/);
+        assert.match(raw,/name="model"\r\n\r\nwhisper-large-v3/);
+        assert.match(raw,/name="language"\r\n\r\nes/);
+        assert.match(raw,/name="response_format"\r\n\r\njson/);
+        res.writeHead(status,{'Content-Type':'application/json'});
+        res.end(JSON.stringify(status===200?{text:'Prueba ficticia en español.'}:{error:'Detalle privado del proveedor'}));
+    });
+    await new Promise(r=>upstream.listen(0,'127.0.0.1',r));
+    await new Promise(r=>server.listen(0,'127.0.0.1',r));
+    const prior={...process.env};
+    process.env.MEDAI_PROVIDER_POLICY_REVIEWED='true';
+    process.env.MEDAI_WHISPER_TEST_KEY='fictitious-key';
+    process.env.MEDAI_PROVIDER_CONFIG=JSON.stringify({transcribe:[{kind:'openai',url:'http://127.0.0.1:'+upstream.address().port+'/audio/transcriptions',model:'whisper-large-v3',tokenEnv:'MEDAI_WHISPER_TEST_KEY',noTraining:true,rawAudioApproved:true}]});
+    const base='http://127.0.0.1:'+server.address().port;
+    const post=()=>fetch(base+'/api/transcribe',{method:'POST',headers:{'Content-Type':'audio/webm','X-MedAI-Consent':JSON.stringify({version:POLICY_VERSION,operation:'transcribe',accepted:true})},body:Buffer.from('audio-ficticio')});
+    try{
+        assert.equal((await (await fetch(base+'/api/status')).json()).transcribe,true);
+        assert.equal((await (await post()).json()).text,'Prueba ficticia en español.');
+        for(const [s,code] of [[401,'PROVIDER_KEY'],[429,'PROVIDER_QUOTA'],[400,'PROVIDER_AUDIO']]){
+            status=s;const response=await post();assert.equal(response.status,502);
+            const data=await response.json();assert.equal(data.code,code);
+            assert.doesNotMatch(JSON.stringify(data),/fictitious-key|Detalle privado/);
+        }
+        delete process.env.MEDAI_WHISPER_TEST_KEY;
+        assert.equal((await (await fetch(base+'/api/status')).json()).transcribe,false);
+        assert.equal((await post()).status,503);
+        assert.equal(calls,4);
+    }finally{
+        for(const key of ['MEDAI_PROVIDER_POLICY_REVIEWED','MEDAI_WHISPER_TEST_KEY','MEDAI_PROVIDER_CONFIG']){
+            if(prior[key]===undefined)delete process.env[key];else process.env[key]=prior[key];
+        }
+        await Promise.all([new Promise(r=>server.close(r)),new Promise(r=>upstream.close(r))]);
+    }
+});

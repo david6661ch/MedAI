@@ -15,7 +15,7 @@ function configured(operation) {
         const parsed = JSON.parse(process.env.MEDAI_PROVIDER_CONFIG || '{}');
         // Bloqueado por defecto: el responsable debe verificar las condiciones del proveedor.
         if(process.env.MEDAI_PROVIDER_POLICY_REVIEWED !== 'true') return [];
-        return Array.isArray(parsed[operation]) ? parsed[operation].filter(p=>p && typeof p.url==='string' && p.noTraining===true && (operation!=='transcribe'||p.rawAudioApproved===true)) : [];
+        return Array.isArray(parsed[operation]) ? parsed[operation].filter(p=>p && typeof p.url==='string' && p.noTraining===true && (!p.tokenEnv || !!process.env[p.tokenEnv]?.trim()) && (operation!=='transcribe'||p.rawAudioApproved===true)) : [];
     } catch { return []; }
 }
 function allowedOrigin(req) {
@@ -66,7 +66,7 @@ async function upstream(operation, provider, payload, mime) {
     }else if(provider.kind==='openai'&&operation==='transcribe'){
         if(!provider.model)throw Error('missing model');
         const ext={'audio/mpeg':'mp3','audio/mp3':'mp3','audio/wav':'wav','audio/x-wav':'wav','audio/mp4':'m4a','video/mp4':'mp4','audio/x-m4a':'m4a','audio/ogg':'ogg','application/ogg':'ogg','audio/flac':'flac'}[mime]||'webm';
-        data=new FormData(); data.append('file',new Blob([payload],{type:mime}),'audio.'+ext);data.append('model',provider.model);data.append('language','es');
+        data=new FormData(); data.append('file',new Blob([payload],{type:mime}),'audio.'+ext);data.append('model',provider.model);data.append('language','es');data.append('response_format','json');
     }else if(operation==='transcribe'){
         headers['Content-Type']=mime;data=payload;
     }else{
@@ -74,13 +74,16 @@ async function upstream(operation, provider, payload, mime) {
         data=JSON.stringify({...payload,...(operation==='chat'?{instructions:safety}:operation==='revise'?{instructions:editing}:{})});
     }
     const response=await fetch(url,{method:'POST',headers,body:data,signal:AbortSignal.timeout(40000),redirect:'error'});
-    if(!response.ok)throw Error('provider failed');
+    if(!response.ok){
+        const error=Error('provider failed');error.code=({400:'PROVIDER_AUDIO',401:'PROVIDER_KEY',403:'PROVIDER_FORBIDDEN',402:'PROVIDER_QUOTA',429:'PROVIDER_QUOTA',413:'PROVIDER_AUDIO',415:'PROVIDER_AUDIO',422:'PROVIDER_AUDIO'})[response.status]||'PROVIDER_UNAVAILABLE';
+        await response.body?.cancel();throw error;
+    }
     const chunks=[];let size=0;
     for await(const chunk of response.body){size+=chunk.length;if(size>1024*1024)throw Error('response too large');chunks.push(Buffer.from(chunk));}
     const result=JSON.parse(Buffer.concat(chunks).toString('utf8'));
     if(operation==='support'){if(result.accepted!==true)throw Error('not confirmed');return {accepted:true};}
     const text=provider.kind==='openai'&&operation!=='transcribe'?result.choices?.[0]?.message?.content:result.text;
-    if(typeof text!=='string'||!text.trim()||text.length>40000)throw Error('invalid response');
+    if(typeof text!=='string'||!text.trim()||text.length>40000){const error=Error('invalid response');error.code='PROVIDER_EMPTY';throw error;}
     const redacted=redactPersonalData(text);
     if(operation==='revise' && !safeRevision(payload.text,redacted))throw Error('unsafe revision');
     return {text:redacted,generatedBy:'ai',policyVersion:POLICY_VERSION};
@@ -114,9 +117,11 @@ export async function handleApi(req,res,path){
     if(operation==='chat')return json(res,200,localGuidance(payload.message));
     // Evita duplicar solicitudes de soporte; para otros servicios solo hay fallback
     // si el administrador configuró explícitamente varios proveedores.
+    let code='PROVIDER_UNAVAILABLE';
     for(const provider of providers.slice(0,operation==='support'?1:2)){
         try{return json(res,200,await upstream(operation,provider,payload,mime));}
-        catch{/* No registrar datos de pacientes, claves ni respuestas del proveedor. */}
+        catch(error){code=error.code||(['TimeoutError','AbortError'].includes(error.name)?'PROVIDER_TIMEOUT':'PROVIDER_UNAVAILABLE');}
     }
-    return json(res,502,{error:'Provider unavailable'});
+    // Solo códigos controlados: nunca cuerpos de error, claves ni audio.
+    return json(res,502,{error:'Provider unavailable',code});
 }
